@@ -3,6 +3,10 @@ use std::{env, process::exit, sync::mpsc, thread};
 use tungstenite::{connect, Message};
 use url::Url;
 
+use crate::chat_message::ChatMessage;
+
+mod chat_message;
+
 fn main() {
     println!("Thread: {:?}", thread::current().id());
     let token = env::var("TWITCH_BOT_TOKEN").unwrap_or_else(|_| {
@@ -32,7 +36,7 @@ fn main() {
             .write_message(Message::Text("NICK ToerkBot".into()))
             .unwrap();
         socket
-            .write_message(Message::Text("JOIN #mewtru".into()))
+            .write_message(Message::Text("JOIN #gamesdonequick".into()))
             .unwrap();
         socket
             .write_message(Message::Text("CAP REQ :twitch.tv/tags".into()))
@@ -54,7 +58,9 @@ fn main() {
     loop {
         let received = rx.recv().unwrap();
         println!("Received message: {}", received);
+        if received.to_text().unwrap().contains("PRIVMSG") {
+            let message = ChatMessage::new(received.to_text().unwrap());
+            println!("{:#?}", message);
+        }
     }
-
-    //handle.join().unwrap();
 }
