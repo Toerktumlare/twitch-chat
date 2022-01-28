@@ -1,66 +1,92 @@
 #![allow(dead_code)]
-use std::{env, process::exit, sync::mpsc, thread};
-use tungstenite::{connect, Message};
-use url::Url;
+#![allow(unused_imports)]
+use crossbeam::channel::{select, unbounded};
+use crossterm::{
+    cursor,
+    event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
+    execute,
+    terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
+};
+use gui::{
+    buffer::{Cell, Style},
+    screen::Screen,
+    window::Window,
+    Pos, Size,
+};
+use std::{
+    env,
+    process::exit,
+    thread::{self, Thread},
+};
+use std::{io::stdout, time::Duration};
+use tungstenite::Message;
 
 use crate::chat_message::ChatMessage;
+use crate::twitch_client::TwitchClient;
 
 mod chat_message;
+mod gui;
+mod twitch_client;
 
 fn main() {
-    println!("Thread: {:?}", thread::current().id());
+    let output = stdout();
+    execute!(stdout(), EnterAlternateScreen).unwrap();
+    let mut screen = Screen::new(output, Size::new(96, 16)).unwrap();
+    let mut window = Window::new(Pos::new(1, 2), Size::new(94, 14));
+
     let token = env::var("TWITCH_BOT_TOKEN").unwrap_or_else(|_| {
         eprintln!("TWITCH_BOT_TOKEN env variable not set");
         exit(1);
     });
 
-    let (tx, rx) = mpsc::channel();
+    let client = TwitchClient::new("ws://irc-ws.chat.twitch.tv:80", token);
+    let (r1, _join_handle) = client.run();
 
-    let _handle = thread::spawn(move || {
-        println!("Thread: {:?}", thread::current().id());
-
-        let (mut socket, response) = connect(Url::parse("ws://irc-ws.chat.twitch.tv:80").unwrap())
-            .expect("couldn't connect");
-
-        println!("Connected to the server");
-        println!("Response https code is: {}", response.status());
-        println!("Response contains the following headers: ");
-        for (header, value) in response.headers() {
-            println!("* {}: {:?}", header, value);
-        }
-
-        let token = format!("PASS {}", token);
-
-        socket.write_message(Message::Text(token)).unwrap();
-        socket
-            .write_message(Message::Text("NICK ToerkBot".into()))
-            .unwrap();
-        socket
-            .write_message(Message::Text("JOIN #gamesdonequick".into()))
-            .unwrap();
-        socket
-            .write_message(Message::Text("CAP REQ :twitch.tv/tags".into()))
-            .unwrap();
-
-        loop {
-            let msg = socket.read_message().expect("error reading msgs");
-
-            if msg.to_text().unwrap().contains("PING :tmi.twitch.tv") {
-                println!("PONG back at ya, twitcherino!");
-                socket
-                    .write_message(Message::Text("PONG :tmi.twitch.tv".into()))
-                    .unwrap();
-            }
-            tx.send(msg).unwrap();
+    let (s, r2) = unbounded();
+    let _join_handle2 = thread::spawn(move || loop {
+        if poll(Duration::from_millis(100)).unwrap() {
+            match read().unwrap() {
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('q'),
+                    modifiers: KeyModifiers::NONE,
+                }) => {
+                    s.send(Message::Ping(vec![1])).unwrap();
+                    break;
+                }
+                _ => break,
+            };
         }
     });
 
     loop {
-        let received = rx.recv().unwrap();
-        println!("Received message: {}", received);
-        if received.to_text().unwrap().contains("PRIVMSG") {
-            let message = ChatMessage::new(received.to_text().unwrap());
-            println!("{:#?}", message);
+        select! {
+            recv(r1) -> msg => {
+                let msg = msg.unwrap();
+                if msg.to_text().unwrap().contains("PRIVMSG") {
+                    let message = ChatMessage::parse(msg.to_text().unwrap());
+                    let message = format!(
+                        "{} | {}: {}",
+                        message.meta_data.tmi_sent_ts,
+                        message.meta_data.display_name.unwrap(),
+                        message.message.trim()
+                    );
+                    window.print(
+                        &mut screen,
+                        message,
+                        Style::none(),
+                    );
+                    window.newline(&mut screen);
+                    screen.render().unwrap();
+                }
+            },
+            recv(r2) -> msg => {
+                match msg {
+                    Pong => {
+                        std::process::exit(0);
+                    }
+                }
+            }
         }
     }
 }

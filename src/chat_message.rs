@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     branch::alt,
@@ -37,6 +38,7 @@ enum Badges {
     Turbo,
     Premium,
     GlitchCon2020,
+    SubGifter,
     Unimplemented,
 }
 
@@ -53,6 +55,7 @@ impl From<&str> for Badges {
             "turbo" => Badges::Turbo,
             "premium" => Badges::Premium,
             "glitchcon2020" => Badges::GlitchCon2020,
+            "sub-gifter" => Badges::SubGifter,
             _ => Badges::Unimplemented,
         }
     }
@@ -415,7 +418,7 @@ fn meta_data(input: &str) -> Res<&str, MetaData> {
             badges,
             opt(client_nonce),
             opt(bits),
-            color,
+            opt(color),
             display_name,
             opt(emote_only),
             emotes,
@@ -489,13 +492,13 @@ struct Emote<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct MetaData<'a> {
+pub struct MetaData<'a> {
     badge_info: Vec<(Badges, &'a str)>,
     badges: Vec<(Badges, &'a str)>,
     client_nonce: Option<&'a str>,
     bits: Option<u32>,
-    color: Option<(u8, u8, u8)>,
-    display_name: Option<&'a str>,
+    color: Option<Option<(u8, u8, u8)>>,
+    pub display_name: Option<&'a str>,
     emote_only: Option<bool>,
     emotes: Vec<Emote<'a>>,
     first_msg: bool,
@@ -504,7 +507,7 @@ struct MetaData<'a> {
     moderator: bool,
     room_id: u32,
     subscriber: bool,
-    tmi_sent_ts: DateTime<Utc>,
+    pub tmi_sent_ts: DateTime<Utc>,
     turbo: bool,
     user_id: u32,
     user_type: Option<&'a str>,
@@ -512,15 +515,15 @@ struct MetaData<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ChatMessage<'a> {
-    meta_data: MetaData<'a>,
+    pub meta_data: MetaData<'a>,
     prefix: &'a str,
     message_type: MessageType,
     destination: &'a str,
-    message: &'a str,
+    pub message: &'a str,
 }
 
 impl<'a> ChatMessage<'a> {
-    pub fn new(input: &'a str) -> Self {
+    pub fn parse(input: &'a str) -> Self {
         let (next, meta_data) = meta_data(input).unwrap();
         let (next, prefix) = prefix(next).unwrap();
         let (next, message_type) = message_type(next).unwrap();
@@ -541,33 +544,6 @@ mod test {
     use super::*;
     use nom::error::VerboseErrorKind;
     use nom::Err as NomErr;
-
-    // @badge-info=
-    // ;badges=global_mod/1,turbo/1
-    // ;color=#0D4200
-    // ;display-name=ronni
-    // ;emotes=25:0-4,12-16/1902:6-10
-    // ;id=b34ccfc7-4977-403a-8a94-33c6bac34fb8
-    // ;mod=0
-    // ;room-id=1337
-    // ;subscriber=0
-    // ;tmi-sent-ts=1507246572675
-    // ;turbo=1
-    // ;user-id=1337
-    // ;user-type=global_mod
-    // :ronni!ronni@ronni.tmi.twitch.tv
-    // PRIVMSG
-    // #ronni
-    // :Kappa Keepo Kappa
-    //
-    // :vinnyiow!vinnyiow@vinnyiow.tmi.twitch.tv PRIVMSG #gamesdonequick :God damn
-
-    #[test]
-    fn test_meta_data() {
-        let message = "@badge-info=;badges=premium/1;client-nonce=0516eecabf0746903cb5183fdd838584;color=#0000FF;display-name=Lurkiestmonstr0;emotes-only=1;emotes=;first-msg=0;flags=;id=ddf70731-9672-44d9-a9b0-70f1712c9427;mod=0;room-id=23460970;subscriber=0;tmi-sent-ts=1642020726314;turbo=0;user-id=85977356";
-        let (next, meta_data) = meta_data(message).unwrap();
-        println!("{:#?}", meta_data);
-    }
 
     #[test]
     fn test_prefix() {
