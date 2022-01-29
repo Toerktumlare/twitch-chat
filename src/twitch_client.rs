@@ -21,9 +21,10 @@ impl TwitchClient {
         let (s, r) = unbounded();
         let token = &self.token;
 
-        let (mut socket, response) = connect(Url::parse("ws://irc-ws.chat.twitch.tv:80").unwrap())
-            .expect("couldn't connect");
+        let (mut socket, response) =
+            connect(Url::parse(self.url.as_str()).unwrap()).expect("couldn't connect");
 
+        // TODO these should be sent through a channel instead, raw mode prevents println
         println!("Connected to the server");
         println!("Response https code is: {}", response.status());
         println!("Response contains the following headers: ");
@@ -38,7 +39,7 @@ impl TwitchClient {
             .write_message(Message::Text("NICK ToerkBot".into()))
             .unwrap();
         socket
-            .write_message(Message::Text("JOIN #limealicious".into()))
+            .write_message(Message::Text("JOIN #toerktumlare".into()))
             .unwrap();
         socket
             .write_message(Message::Text("CAP REQ :twitch.tv/tags".into()))
@@ -48,7 +49,6 @@ impl TwitchClient {
             let msg = socket.read_message().expect("error reading msgs");
 
             if msg.to_text().unwrap().contains("PING :tmi.twitch.tv") {
-                println!("PONG back at ya, twitcherino!");
                 socket
                     .write_message(Message::Text("PONG :tmi.twitch.tv".into()))
                     .unwrap();

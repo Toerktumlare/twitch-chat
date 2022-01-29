@@ -3,7 +3,10 @@ use std::io::{Result, Write};
 use crossterm::{
     cursor,
     style::{Print, SetForegroundColor},
-    terminal::size as term_size,
+    terminal::{
+        disable_raw_mode, enable_raw_mode, size as term_size, EnterAlternateScreen,
+        LeaveAlternateScreen,
+    },
     ExecutableCommand, QueueableCommand,
 };
 
@@ -12,11 +15,13 @@ use super::{
     Pos, Size,
 };
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Screen<W: Write> {
     new_buffer: Buffer,
     old_buffer: Buffer,
     size: Size,
     output: W,
+    alt_screen: bool,
 }
 
 impl Screen<std::io::Stdout> {
@@ -37,6 +42,7 @@ impl<W: Write> Screen<W> {
             new_buffer: Buffer::new(size),
             old_buffer: Buffer::new(size),
             size,
+            alt_screen: false,
         })
     }
 
@@ -52,6 +58,24 @@ impl<W: Write> Screen<W> {
         if self.contains(pos) {
             self.new_buffer.put(cell, pos)
         }
+    }
+
+    pub fn alternate_screen(mut self, value: bool) -> Self {
+        self.alt_screen = value;
+        if self.alt_screen {
+            self.output.execute(EnterAlternateScreen).unwrap();
+        }
+        self
+    }
+
+    pub fn enable_raw_mode(&self) -> Result<()> {
+        enable_raw_mode()?;
+        Ok(())
+    }
+
+    pub fn disable_raw_mode(&self) -> Result<()> {
+        disable_raw_mode()?;
+        Ok(())
     }
 
     pub fn render(&mut self) -> Result<()> {
@@ -83,7 +107,14 @@ impl<W: Write> Screen<W> {
 impl<W: Write> Drop for Screen<W> {
     fn drop(&mut self) {
         self.output
-            .execute(cursor::Show)
+            .queue(cursor::Show)
             .expect("Could not show cursor when shutting down");
+        if self.alt_screen {
+            self.output.queue(LeaveAlternateScreen).expect(
+                "Could not leave alternate screen, you are forever damned to live in darkness",
+            );
+        }
+        disable_raw_mode().expect("Could not disable raw mode");
+        self.output.flush().expect("Could not flush the toilet");
     }
 }
