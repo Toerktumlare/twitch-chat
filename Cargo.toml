@@ -2,8 +2,9 @@
 edition = "2021"
 name = "twitch-chat"
 version = "0.1.0"
+
 [dependencies]
-chrono = "*"
+chrono = { version = "0.4", features = ["unstable-locales"]}
 crossbeam = "*"
 crossterm = "*"
 nom = "*"

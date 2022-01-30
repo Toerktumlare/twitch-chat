@@ -31,6 +31,9 @@ impl Window {
         if self.cursor.y < screen.size().height - 1 {
             self.cursor.x = 0;
             self.cursor.y += 1;
+        } else {
+            screen.scroll_up(1);
+            self.cursor.x = 0;
         }
     }
 

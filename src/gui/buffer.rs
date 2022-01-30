@@ -67,7 +67,7 @@ pub enum CellState {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Buffer {
     size: Size,
-    inner: Vec<Cell>,
+    pub inner: Vec<Cell>,
 }
 
 impl Buffer {

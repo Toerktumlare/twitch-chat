@@ -355,7 +355,12 @@ fn tmi_sent_ts(input: &str) -> Res<&str, DateTime<Utc>> {
             separated_pair(tag("tmi-sent-ts"), tag("="), digit1),
         ),
     )(input)
-    .map(|(next, (_, result))| (next, Utc.timestamp(result.parse::<i64>().unwrap(), 0)))
+    .map(|(next, (_, result))| {
+        (
+            next,
+            Utc.timestamp(result[0..10].parse::<i64>().unwrap(), 0),
+        )
+    })
 }
 
 fn user_type(input: &str) -> Res<&str, &str> {
@@ -840,6 +845,19 @@ mod test {
         assert_eq!(
             parse_message_type("PRIVMSG #toerktumlare: foobar"),
             Ok((" #toerktumlare: foobar", MessageType::PrivMsg))
+        );
+    }
+
+    #[test]
+    fn should_format_date() {
+        let value: i64 = 1643578014567;
+        assert_eq!(
+            Utc.timestamp(1431648000, 0).to_string(),
+            "2015-05-15 00:00:00 UTC"
+        );
+        assert_eq!(
+            Utc.timestamp(1643578014, 567).to_string(),
+            "2015-05-15 00:00:00 UTC"
         );
     }
 }
