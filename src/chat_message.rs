@@ -502,7 +502,7 @@ pub struct MetaData<'a> {
     badges: Vec<(Badges, &'a str)>,
     client_nonce: Option<&'a str>,
     bits: Option<u32>,
-    color: Option<Option<(u8, u8, u8)>>,
+    pub color: Option<Option<(u8, u8, u8)>>,
     pub display_name: Option<&'a str>,
     emote_only: Option<bool>,
     emotes: Vec<Emote<'a>>,

@@ -24,12 +24,20 @@ impl TwitchClient {
         let (mut socket, response) =
             connect(Url::parse(self.url.as_str()).unwrap()).expect("couldn't connect");
 
-        // TODO these should be sent through a channel instead, raw mode prevents println
-        println!("Connected to the server");
-        println!("Response https code is: {}", response.status());
-        println!("Response contains the following headers: ");
+        s.send(Message::Text(format!("Connected to {}", self.url)))
+            .unwrap();
+        s.send(Message::Text(format!(
+            "Response https code: {}",
+            response.status()
+        )))
+        .unwrap();
+        s.send(Message::Text(format!("Connected to {}", self.url)))
+            .unwrap();
+        s.send(Message::Text(format!("Connected to {}", self.url)))
+            .unwrap();
         for (header, value) in response.headers() {
-            println!("* {}: {:?}", header, value);
+            s.send(Message::Text(format!("* {}: {:?}", header, value)))
+                .unwrap();
         }
 
         let token = format!("PASS {}", token);

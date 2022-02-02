@@ -16,8 +16,12 @@ impl Style {
         Self { fg, bg }
     }
 
+    pub fn fg(fg: Option<Color>) -> Self {
+        Self { fg, bg: None }
+    }
+
     pub fn none() -> Style {
-        Style::new(None, None)
+        Style::new(Some(Color::Reset), Some(Color::Reset))
     }
 }
 

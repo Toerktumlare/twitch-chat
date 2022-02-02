@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
+use chrono::Local;
 use crossbeam::channel::{select, unbounded};
+use crossterm::style::Color;
 use crossterm::{
     cursor,
     event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
@@ -31,19 +33,17 @@ mod twitch_client;
 
 //TODO:
 // - Borders around the window
-// - Print correct timezone
-// - Username colors
 // - chat channel argument
 // - username argument
 //
 // autoresize... difficult... maybe next decade
-// make sure all messages from twitch are sent through to the gui thread
-// check how toogle solves events
+// check how toggle solves events
 // event a want:
 //    - scroll up/down
 //    - clear the screen
-//    - quit application
+//    - quit application, more gracefully
 // create a KeyEventHandler
+// create proper key events (enum)
 // EventHandler that takes in a MessageEventHandler, and a KeyEventHandler
 // Handle different message type:
 //    - PRIVMSG
@@ -53,8 +53,8 @@ mod twitch_client;
 fn main() {
     let output = stdout();
     execute!(stdout(), EnterAlternateScreen).unwrap();
-    let mut screen = Screen::new(output, Size::new(96, 10)).unwrap();
-    let mut window = Window::new(Pos::new(0, 0), Size::new(96, 10));
+    let mut screen = Screen::new(output, Size::new(96, 32)).unwrap();
+    let mut window = Window::new(Pos::new(0, 0), Size::new(96, 32));
 
     let token = env::var("TWITCH_BOT_TOKEN").unwrap_or_else(|_| {
         eprintln!("TWITCH_BOT_TOKEN env variable not set");
@@ -73,10 +73,11 @@ fn main() {
                 Event::Key(KeyEvent {
                     code: KeyCode::Char('q'),
                     modifiers: KeyModifiers::NONE,
-                }) => {
-                    s.send(Message::Ping(vec![1])).unwrap();
-                    break;
-                }
+                }) => s.send(Message::Ping(vec![1])).unwrap(),
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('c'),
+                    modifiers: KeyModifiers::NONE,
+                }) => s.send(Message::Text("#clear".to_string())).unwrap(),
                 _ => break,
             };
         }
@@ -86,25 +87,42 @@ fn main() {
         select! {
             recv(r1) -> msg => {
                 let msg = msg.unwrap();
-                if msg.to_text().unwrap().contains("PRIVMSG") {
+                if msg.to_text().unwrap_or("").contains("PRIVMSG") {
                     let message = ChatMessage::parse(msg.to_text().unwrap());
-                    let message = format!(
-                        "{} | {}: {}",
-                        message.meta_data.tmi_sent_ts.format("%Y-%m-%d %H:%M:%S").to_string(),
-                        message.meta_data.display_name.unwrap(),
-                        message.message.trim()
-                    );
-                    window.newline(&mut screen);
-                    window.print(
-                        &mut screen,
-                        message,
-                        Style::none(),
-                    );
-                    screen.render().unwrap();
+                    window.print(&mut screen,
+                        message.meta_data.tmi_sent_ts.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string(),
+                        Style::none());
+                    window.print(&mut screen, " | ", Style::none());
+                    let (r, g, b) = message.meta_data.color.flatten().unwrap_or((15, 15, 15));
+                    window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
+                    window.print(&mut screen, " | ", Style::none());
+                    window.print(&mut screen, message.message.trim(), Style::none());
+                } else {
+                    let message = msg.to_text().unwrap().to_string();
+                    let message = format!("{} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), message);
+                    window.print(&mut screen, message, Style::none());
                 }
+
+                window.newline(&mut screen);
+                screen.render().unwrap();
+
+
             },
-            recv(r2) -> _ => {
-                std::process::exit(0);
+            recv(r2) -> msg => {
+                let msg = msg.unwrap();
+                match msg {
+                    Message::Ping(_) => {
+                        // Can't join handle since connection to twitch is not closed
+                        // join_handle.join().unwrap();
+                        // join_handle2.join().unwrap();
+                        std::process::exit(0);
+                    }
+                    Message::Text(_) => {
+                        window.clear(&mut screen);
+                        screen.render().unwrap();
+                    },
+                    _ => break,
+                }
             }
         }
     }

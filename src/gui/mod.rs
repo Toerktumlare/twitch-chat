@@ -34,6 +34,12 @@ impl From<(u16, u16)> for Size {
     }
 }
 
+impl Display for Size {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.width, self.height)
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Pos {
     x: u16,

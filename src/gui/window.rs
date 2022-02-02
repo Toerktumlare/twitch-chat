@@ -1,14 +1,16 @@
-use std::io::Write;
+use std::io::{Stdout, Write};
+
+use crossterm::Result;
 
 use super::{
     buffer::{Cell, Style},
-    screen::Screen,
+    screen::{self, Screen},
     Pos, Size,
 };
 
 pub struct Window {
     pos: Pos,
-    size: Size,
+    pub size: Size,
     cursor: Pos,
 }
 
@@ -51,6 +53,11 @@ impl Window {
         } else {
             self.cursor.x += cell.width();
         }
+    }
+
+    pub fn clear(&mut self, screen: &mut Screen<impl Write>) {
+        screen.erase_region(self.pos, self.size);
+        self.cursor = Pos::zero();
     }
 }
 

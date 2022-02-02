@@ -1,11 +1,11 @@
 use std::io::{Result, Write};
 
 use crossterm::{
-    cursor,
-    style::{Print, SetForegroundColor},
+    cursor::{self, MoveTo},
+    style::{Color, Print, SetBackgroundColor, SetForegroundColor},
     terminal::{
-        disable_raw_mode, enable_raw_mode, size as term_size, EnterAlternateScreen,
-        LeaveAlternateScreen,
+        disable_raw_mode, enable_raw_mode, size as term_size, Clear, ClearType,
+        EnterAlternateScreen, LeaveAlternateScreen,
     },
     ExecutableCommand, QueueableCommand,
 };
@@ -76,6 +76,25 @@ impl<W: Write> Screen<W> {
     pub fn disable_raw_mode(&self) -> Result<()> {
         disable_raw_mode()?;
         Ok(())
+    }
+
+    pub fn clear_all(&mut self) -> Result<()> {
+        self.output.execute(MoveTo(0, 0))?;
+        self.output.execute(SetForegroundColor(Color::Reset))?;
+        self.output.execute(SetBackgroundColor(Color::Reset))?;
+        self.output.execute(Clear(ClearType::All))?;
+        Ok(())
+    }
+
+    pub fn erase_region(&mut self, pos: Pos, size: Size) {
+        let to_x = (size.width + pos.x).min(self.size.width);
+        let to_y = (size.height + pos.y).min(self.size.height);
+
+        for x in pos.x.min(to_x)..to_x {
+            for y in pos.y.min(to_y)..to_y {
+                self.new_buffer.empty(Pos::new(x, y));
+            }
+        }
     }
 
     pub fn scroll_up(&mut self, lines: usize) {
