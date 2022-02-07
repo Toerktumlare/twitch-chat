@@ -528,33 +528,19 @@ pub struct ChatMessage<'a> {
 }
 
 impl<'a> ChatMessage<'a> {
-    pub fn parse(input: &str) -> Result<ChatMessage, VerboseError<&str>> {
-        match ChatMessage::from_str(input) {
-            Ok((_, msg)) => Ok(msg),
-            Err(e) => match e {
-                nom::Err::Error(e) => Err(e),
-                nom::Err::Failure(e) => Err(e),
-                nom::Err::Incomplete(_) => Err(VerboseError { errors: vec![] }),
-            },
-        }
-    }
-
-    fn from_str(input: &'a str) -> Res<&'a str, ChatMessage> {
+    pub fn parse(input: &str) -> Result<ChatMessage, nom::Err<VerboseError<&str>>> {
         let (next, meta_data) = meta_data(input)?;
         let (next, prefix) = prefix(next)?;
         let (next, message_type) = message_type(next)?;
         let (next, destination) = destination(next)?;
         let (_, message) = message(next)?;
-        Ok((
-            next,
-            ChatMessage {
-                message_type,
-                meta_data,
-                prefix,
-                destination,
-                message,
-            },
-        ))
+        Ok(ChatMessage {
+            message_type,
+            meta_data,
+            prefix,
+            destination,
+            message,
+        })
     }
 }
 

@@ -7,7 +7,7 @@ use crossterm::{
     cursor,
     event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
-    terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
 use gui::{
@@ -28,6 +28,7 @@ use crate::chat_message::ChatMessage;
 use crate::twitch_client::TwitchClient;
 
 mod chat_message;
+mod color_gen;
 mod gui;
 mod twitch_client;
 
@@ -50,34 +51,43 @@ mod twitch_client;
 //    - Meta information from Twitch (headers etc.)
 //    - Error message?
 // Handle a debug flag, which will print messages to the window
-fn main() {
-    let output = stdout();
-    execute!(stdout(), EnterAlternateScreen).unwrap();
-    let mut screen = Screen::new(output, Size::new(96, 32)).unwrap();
-    let mut window = Window::new(Pos::new(0, 0), Size::new(96, 32));
+static CHANNEL: &str = "bmkibler";
+static NICK: &str = "ToerkBot";
+static TWITCH_URL: &str = "ws://irc-ws.chat.twitch.tv:80";
 
+fn main() {
     let token = env::var("TWITCH_BOT_TOKEN").unwrap_or_else(|_| {
         eprintln!("TWITCH_BOT_TOKEN env variable not set");
         exit(1);
     });
 
-    let client = TwitchClient::new("ws://irc-ws.chat.twitch.tv:80", token);
-    let (r1, _join_handle) = client.run();
+    let output = stdout();
+    let size = size().expect("Failed to fetch terminal size");
+
+    execute!(stdout(), EnterAlternateScreen).unwrap();
+
+    let mut screen = Screen::new(output, Size::new(size.0, size.1)).unwrap();
+    let mut window = Window::new(Pos::new(0, 0), Size::new(size.0, size.1));
+
+    let client = TwitchClient::new(TWITCH_URL, token, CHANNEL.to_string(), NICK.to_string());
+    let (client_receiver, _join_handle) = client.run();
 
     screen.enable_raw_mode().expect("could not enable raw mode");
 
-    let (s, r2) = unbounded();
+    let (key_sender, key_receiver) = unbounded();
     let _join_handle2 = thread::spawn(move || loop {
         if poll(Duration::from_millis(100)).unwrap() {
             match read().unwrap() {
                 Event::Key(KeyEvent {
                     code: KeyCode::Char('q'),
                     modifiers: KeyModifiers::NONE,
-                }) => s.send(Message::Ping(vec![1])).unwrap(),
+                }) => key_sender.send(Message::Ping(vec![1])).unwrap(),
                 Event::Key(KeyEvent {
                     code: KeyCode::Char('c'),
                     modifiers: KeyModifiers::NONE,
-                }) => s.send(Message::Text("#clear".to_string())).unwrap(),
+                }) => key_sender
+                    .send(Message::Text("#clear".to_string()))
+                    .unwrap(),
                 _ => break,
             };
         }
@@ -85,15 +95,19 @@ fn main() {
 
     loop {
         select! {
-            recv(r1) -> msg => {
+            recv(client_receiver) -> msg => {
                 let msg = msg.unwrap();
+
                 if msg.to_text().unwrap().contains("PRIVMSG") {
                     if let Ok(message) = ChatMessage::parse(msg.to_text().unwrap()) {
+                        window.print(&mut screen, "| ", Style::none());
                         window.print(&mut screen,
-                            message.meta_data.tmi_sent_ts.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string(),
+                            message.meta_data.tmi_sent_ts.with_timezone(&Local)
+                                .format("%H:%M:%S")
+                                .to_string(),
                             Style::none());
                         window.print(&mut screen, " | ", Style::none());
-                        let (r, g, b) = message.meta_data.color.flatten().unwrap_or((15, 15, 15));
+                        let (r, g, b) = message.meta_data.color.flatten().unwrap_or_else(color_gen::get_color);
                         window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
                         window.print(&mut screen, " | ", Style::none());
                         window.print(&mut screen, message.message.trim(), Style::none());
@@ -101,15 +115,20 @@ fn main() {
                     } else {
                         let message = msg.to_text().unwrap().to_string();
                         if !message.starts_with('@') {
-                            let message = format!("{} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), message);
+                            let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
                             window.print(&mut screen, message, Style::none());
                             window.newline(&mut screen);
                         }
                     }
+                } else {
+                    let message = msg.to_text().unwrap().to_string();
+                    let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                    window.print(&mut screen, message, Style::none());
+                    window.newline(&mut screen);
                 }
                 screen.render().unwrap();
             },
-            recv(r2) -> msg => {
+            recv(key_receiver) -> msg => {
                 let msg = msg.unwrap();
                 match msg {
                     Message::Ping(_) => {

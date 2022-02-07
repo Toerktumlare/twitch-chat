@@ -7,13 +7,23 @@ use url::Url;
 pub struct TwitchClient {
     token: String,
     url: String,
+    channel: String,
+    nick: String,
+}
+
+enum MessageType {
+    Info(String),
+    PrivMsg(String),
+    Error(String),
 }
 
 impl TwitchClient {
-    pub fn new(url: &str, token: String) -> Self {
+    pub fn new(url: &str, token: String, channel: String, nick: String) -> Self {
         TwitchClient {
             url: url.to_string(),
             token,
+            channel,
+            nick,
         }
     }
 
@@ -31,27 +41,20 @@ impl TwitchClient {
             response.status()
         )))
         .unwrap();
-        s.send(Message::Text(format!("Connected to {}", self.url)))
-            .unwrap();
-        s.send(Message::Text(format!("Connected to {}", self.url)))
-            .unwrap();
         for (header, value) in response.headers() {
             s.send(Message::Text(format!("* {}: {:?}", header, value)))
                 .unwrap();
         }
 
         let token = format!("PASS {}", token);
+        let nick_message = format!("NICK {}", self.nick);
+        let join_message = format!("JOIN #{}", self.channel);
+        let tag_message = "CAP REQ :twitch.tv/tags".to_string();
 
         socket.write_message(Message::Text(token)).unwrap();
-        socket
-            .write_message(Message::Text("NICK ToerkBot".into()))
-            .unwrap();
-        socket
-            .write_message(Message::Text("JOIN #toerktumlare".into()))
-            .unwrap();
-        socket
-            .write_message(Message::Text("CAP REQ :twitch.tv/tags".into()))
-            .unwrap();
+        socket.write_message(Message::Text(nick_message)).unwrap();
+        socket.write_message(Message::Text(join_message)).unwrap();
+        socket.write_message(Message::Text(tag_message)).unwrap();
 
         let handle = thread::spawn(move || loop {
             let msg = socket.read_message().expect("error reading msgs");
@@ -60,8 +63,9 @@ impl TwitchClient {
                 socket
                     .write_message(Message::Text("PONG :tmi.twitch.tv".into()))
                     .unwrap();
+            } else {
+                s.send(msg).unwrap();
             }
-            s.send(msg).unwrap();
         });
         (r, handle)
     }
