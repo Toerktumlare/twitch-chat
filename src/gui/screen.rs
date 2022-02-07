@@ -36,7 +36,7 @@ impl<W: Write> Screen<W> {
     pub fn new(mut output: W, size: impl Into<Size>) -> Result<Self> {
         let size: Size = size.into();
         output.queue(cursor::MoveTo(0, 0))?;
-        // output.queue(cursor::Hide)?;
+        output.queue(cursor::Hide)?;
         Ok(Self {
             output,
             new_buffer: Buffer::new(size),

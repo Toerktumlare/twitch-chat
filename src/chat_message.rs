@@ -6,7 +6,7 @@ use nom::{
     bytes::complete::{tag, tag_no_case},
     character::complete::{alpha1, alphanumeric0, alphanumeric1, digit1, multispace0, one_of},
     combinator::{opt, rest},
-    error::{context, ErrorKind, VerboseError},
+    error::{context, Error, ErrorKind, VerboseError, VerboseErrorKind},
     multi::{many1, separated_list0},
     sequence::{preceded, separated_pair, tuple},
     AsChar, IResult, InputTakeAtPosition,
@@ -528,19 +528,33 @@ pub struct ChatMessage<'a> {
 }
 
 impl<'a> ChatMessage<'a> {
-    pub fn parse(input: &'a str) -> Self {
-        let (next, meta_data) = meta_data(input).unwrap();
-        let (next, prefix) = prefix(next).unwrap();
-        let (next, message_type) = message_type(next).unwrap();
-        let (next, destination) = destination(next).unwrap();
-        let (_, message) = message(next).unwrap();
-        ChatMessage {
-            message_type,
-            meta_data,
-            prefix,
-            destination,
-            message,
+    pub fn parse(input: &str) -> Result<ChatMessage, VerboseError<&str>> {
+        match ChatMessage::from_str(input) {
+            Ok((_, msg)) => Ok(msg),
+            Err(e) => match e {
+                nom::Err::Error(e) => Err(e),
+                nom::Err::Failure(e) => Err(e),
+                nom::Err::Incomplete(_) => Err(VerboseError { errors: vec![] }),
+            },
         }
+    }
+
+    fn from_str(input: &'a str) -> Res<&'a str, ChatMessage> {
+        let (next, meta_data) = meta_data(input)?;
+        let (next, prefix) = prefix(next)?;
+        let (next, message_type) = message_type(next)?;
+        let (next, destination) = destination(next)?;
+        let (_, message) = message(next)?;
+        Ok((
+            next,
+            ChatMessage {
+                message_type,
+                meta_data,
+                prefix,
+                destination,
+                message,
+            },
+        ))
     }
 }
 

@@ -87,26 +87,27 @@ fn main() {
         select! {
             recv(r1) -> msg => {
                 let msg = msg.unwrap();
-                if msg.to_text().unwrap_or("").contains("PRIVMSG") {
-                    let message = ChatMessage::parse(msg.to_text().unwrap());
-                    window.print(&mut screen,
-                        message.meta_data.tmi_sent_ts.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string(),
-                        Style::none());
-                    window.print(&mut screen, " | ", Style::none());
-                    let (r, g, b) = message.meta_data.color.flatten().unwrap_or((15, 15, 15));
-                    window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
-                    window.print(&mut screen, " | ", Style::none());
-                    window.print(&mut screen, message.message.trim(), Style::none());
-                } else {
-                    let message = msg.to_text().unwrap().to_string();
-                    let message = format!("{} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), message);
-                    window.print(&mut screen, message, Style::none());
+                if msg.to_text().unwrap().contains("PRIVMSG") {
+                    if let Ok(message) = ChatMessage::parse(msg.to_text().unwrap()) {
+                        window.print(&mut screen,
+                            message.meta_data.tmi_sent_ts.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string(),
+                            Style::none());
+                        window.print(&mut screen, " | ", Style::none());
+                        let (r, g, b) = message.meta_data.color.flatten().unwrap_or((15, 15, 15));
+                        window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
+                        window.print(&mut screen, " | ", Style::none());
+                        window.print(&mut screen, message.message.trim(), Style::none());
+                        window.newline(&mut screen);
+                    } else {
+                        let message = msg.to_text().unwrap().to_string();
+                        if !message.starts_with('@') {
+                            let message = format!("{} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), message);
+                            window.print(&mut screen, message, Style::none());
+                            window.newline(&mut screen);
+                        }
+                    }
                 }
-
-                window.newline(&mut screen);
                 screen.render().unwrap();
-
-
             },
             recv(r2) -> msg => {
                 let msg = msg.unwrap();
