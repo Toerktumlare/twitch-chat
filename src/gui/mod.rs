@@ -5,6 +5,7 @@ use std::{
 
 pub mod buffer;
 pub mod error;
+pub mod event_handler;
 pub mod screen;
 pub mod window;
 

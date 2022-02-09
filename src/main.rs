@@ -12,6 +12,7 @@ use crossterm::{
 };
 use gui::{
     buffer::{Cell, Style},
+    event_handler::{Action, EventHandler},
     screen::Screen,
     window::Window,
     Pos, Size,
@@ -22,40 +23,33 @@ use std::{
     thread::{self, Thread},
 };
 use std::{io::stdout, time::Duration};
-use tungstenite::Message;
 
 use crate::chat_message::ChatMessage;
-use crate::twitch_client::TwitchClient;
+use crate::twitch_client::{Message, TwitchClient};
 
 mod chat_message;
 mod color_gen;
 mod gui;
 mod twitch_client;
 
-//TODO:
-// - Borders around the window
-// - chat channel argument
-// - username argument
-//
-// autoresize... difficult... maybe next decade
-// check how toggle solves events
-// event a want:
-//    - scroll up/down
-//    - clear the screen
-//    - quit application, more gracefully
-// create a KeyEventHandler
-// create proper key events (enum)
-// EventHandler that takes in a MessageEventHandler, and a KeyEventHandler
-// Handle different message type:
-//    - PRIVMSG
-//    - Meta information from Twitch (headers etc.)
-//    - Error message?
-// Handle a debug flag, which will print messages to the window
 static CHANNEL: &str = "bmkibler";
 static NICK: &str = "ToerkBot";
 static TWITCH_URL: &str = "ws://irc-ws.chat.twitch.tv:80";
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    let channel = if args.len() > 1 {
+        let value = &args[1];
+        if value.is_empty() {
+            CHANNEL
+        } else {
+            value
+        }
+    } else {
+        CHANNEL
+    };
+
     let token = env::var("TWITCH_BOT_TOKEN").unwrap_or_else(|_| {
         eprintln!("TWITCH_BOT_TOKEN env variable not set");
         exit(1);
@@ -69,79 +63,62 @@ fn main() {
     let mut screen = Screen::new(output, Size::new(size.0, size.1)).unwrap();
     let mut window = Window::new(Pos::new(0, 0), Size::new(size.0, size.1));
 
-    let client = TwitchClient::new(TWITCH_URL, token, CHANNEL.to_string(), NICK.to_string());
+    let client = TwitchClient::new(TWITCH_URL, token, channel, NICK);
     let (client_receiver, _join_handle) = client.run();
 
     screen.enable_raw_mode().expect("could not enable raw mode");
 
-    let (key_sender, key_receiver) = unbounded();
-    let _join_handle2 = thread::spawn(move || loop {
-        if poll(Duration::from_millis(100)).unwrap() {
-            match read().unwrap() {
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('q'),
-                    modifiers: KeyModifiers::NONE,
-                }) => key_sender.send(Message::Ping(vec![1])).unwrap(),
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('c'),
-                    modifiers: KeyModifiers::NONE,
-                }) => key_sender
-                    .send(Message::Text("#clear".to_string()))
-                    .unwrap(),
-                _ => break,
-            };
-        }
-    });
+    let event_handler = EventHandler::new();
+    let (event_rx, _join_handle) = event_handler.run();
 
     loop {
         select! {
             recv(client_receiver) -> msg => {
-                let msg = msg.unwrap();
-
-                if msg.to_text().unwrap().contains("PRIVMSG") {
-                    if let Ok(message) = ChatMessage::parse(msg.to_text().unwrap()) {
-                        window.print(&mut screen, "| ", Style::none());
-                        window.print(&mut screen,
-                            message.meta_data.tmi_sent_ts.with_timezone(&Local)
-                                .format("%H:%M:%S")
-                                .to_string(),
-                            Style::none());
-                        window.print(&mut screen, " | ", Style::none());
-                        let (r, g, b) = message.meta_data.color.flatten().unwrap_or_else(color_gen::get_color);
-                        window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
-                        window.print(&mut screen, " | ", Style::none());
-                        window.print(&mut screen, message.message.trim(), Style::none());
+                match msg.unwrap() {
+                    Message::Info(message) => {
+                        let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                        window.print(&mut screen, message, Style::none());
                         window.newline(&mut screen);
-                    } else {
-                        let message = msg.to_text().unwrap().to_string();
-                        if !message.starts_with('@') {
+                    },
+                    Message::PrivMsg(message) => {
+                        if let Ok(message) = ChatMessage::parse(&message) {
+                            window.print(&mut screen, "| ", Style::none());
+                            window.print(&mut screen,
+                                message.meta_data.tmi_sent_ts.with_timezone(&Local)
+                                    .format("%H:%M:%S")
+                                    .to_string(),
+                                Style::none());
+                            window.print(&mut screen, " | ", Style::none());
+                            let (r, g, b) = message.meta_data.color.flatten().unwrap_or_else(color_gen::get_color);
+                            window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
+                            window.print(&mut screen, " | ", Style::none());
+                            window.print(&mut screen, message.message.trim(), Style::none());
+                            window.newline(&mut screen);
+                        } else if !message.starts_with('@') {
                             let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
                             window.print(&mut screen, message, Style::none());
                             window.newline(&mut screen);
                         }
-                    }
-                } else {
-                    let message = msg.to_text().unwrap().to_string();
-                    let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
-                    window.print(&mut screen, message, Style::none());
-                    window.newline(&mut screen);
+                    },
+                    Message::Error(message) => {
+                        let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                        window.print(&mut screen, message, Style::fg(Some(Color::Red)));
+                        window.newline(&mut screen);
+                    },
+
                 }
                 screen.render().unwrap();
             },
-            recv(key_receiver) -> msg => {
+            recv(event_rx) -> msg => {
                 let msg = msg.unwrap();
                 match msg {
-                    Message::Ping(_) => {
-                        // Can't join handle since connection to twitch is not closed
-                        // join_handle.join().unwrap();
-                        // join_handle2.join().unwrap();
-                        std::process::exit(0);
-                    }
-                    Message::Text(_) => {
+                    Action::Clear => {
                         window.clear(&mut screen);
                         screen.render().unwrap();
                     },
-                    _ => break,
+                    Action::Exit => {
+                        std::process::exit(0);
+                    }
                 }
             }
         }
