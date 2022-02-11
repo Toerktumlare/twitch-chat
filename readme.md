@@ -7,7 +7,6 @@ If you want to run this there are some steps that needs to be taken.
 
 - Clone or fork the repository
 - Checkout the master branch
-- find the main.rs file and edit it and change the `NICK` value to your nickname on twitch
 - Build the project using cargo build
 - Generate a twitch api token by going to https://twitchapps.com/tmi/ and connect
 - set this token as an environmental variable named `TWITCH_API_TOKEN`
@@ -15,20 +14,19 @@ If you want to run this there are some steps that needs to be taken.
 - run:
 
 ```
-twitch-chat <channel_name>
+twitch-chat --nick=<nick> --channel=<channel>
 ```
 
-where `<channel_name>` is the name of the streamers chat you want to connect to.
+where `<nick>` is the nickname of your account the token is issued for and `<channel>` is the name of the streamers chat you want to connect to.
 
 > At the moment there is no parameter to set the name of who you are logged in as. So you need to change the NICK parameter in main.rs to the name of your account manually before you compile.
 
 
 ## TODO:
-- make `NICK` parameter an input argument
-- breakout application from main method
-- return `Result<T>` from both twitch lister and event listener
+- ~~make `NICK` parameter an input argument~~
+- ~~breakout application from main method~~
+- identify smileys and replace with unicode
 - add `--debug` flag so we can read debug messages in chat, including broken chat messages
 - fix parsing of twitch reply chat messages
 - add unicode stuff for moderators
-- identify smileys and replace with unicode
-- add a unicode symbol that represents Kappa
+- ~~add a unicode symbol that represents Kappa~~

@@ -1,5 +1,6 @@
 use std::thread::{self, JoinHandle};
 
+use chrono::Timelike;
 use crossbeam::channel::{unbounded, Receiver};
 use tungstenite::{connect, error::UrlError, Error, Message as SockMessage};
 use url::Url;
@@ -78,6 +79,9 @@ impl TwitchClient {
             .unwrap();
         socket
             .write_message(SockMessage::Text(tag_message))
+            .unwrap();
+
+        tx.send(Message::Info(format!("Joined channel: {}", &self.channel)))
             .unwrap();
 
         let handle = thread::spawn(move || loop {
