@@ -19,9 +19,6 @@ twitch-chat --nick=<nick> --channel=<channel>
 
 where `<nick>` is the nickname of your account the token is issued for and `<channel>` is the name of the streamers chat you want to connect to.
 
-> At the moment there is no parameter to set the name of who you are logged in as. So you need to change the NICK parameter in main.rs to the name of your account manually before you compile.
-
-
 ## TODO:
 - ~~make `NICK` parameter an input argument~~
 - ~~breakout application from main method~~
