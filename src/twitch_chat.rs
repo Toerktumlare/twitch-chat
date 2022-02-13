@@ -1,21 +1,24 @@
 use std::io::stdout;
 
-use crate::gui::{
-    buffer::Style,
-    event_handler::{Action, EventHandler},
-    screen::Screen,
-    window::Window,
-    Pos, Size,
+use crate::{
+    chat_message::ChatMessage,
+    color_gen,
+    gui::{
+        buffer::Style,
+        event_handler::{Action, EventHandler},
+        screen::Screen,
+        window::Window,
+        Pos, Size,
+    },
 };
 use chrono::Local;
-use crossbeam::channel::select;
+use crossbeam::select;
 use crossterm::{
     execute,
+    style::Color,
     terminal::{size, EnterAlternateScreen},
 };
 
-use crate::chat_message::ChatMessage;
-use crate::color_gen;
 use crate::twitch_client::{Message, TwitchClient};
 
 pub struct TwitchChat {

@@ -4,11 +4,14 @@ name = "twitch-chat"
 version = "0.1.0"
 
 [dependencies]
-chrono = { version = "0.4", features = ["unstable-locales"]}
+crossbeam = "0.8.1"
+crossterm = "0.23.0"
+nom = "7.1.0"
 rand = "0.8.0"
-crossbeam = "*"
-crossterm = "*"
-nom = "*"
-tungstenite = "*"
-unicode-width = "*"
-url = "*"
+tungstenite = "0.16.0"
+unicode-width = "0.1.9"
+url = "2.2.2"
+
+[dependencies.chrono]
+features = ["unstable-locales"]
+version = "0.4"
