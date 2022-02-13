@@ -1,11 +1,7 @@
-use std::error::Error;
-use std::{
-    thread::{self, JoinHandle},
-    time::Duration,
-};
+use std::thread::{self, JoinHandle};
 
-use crossbeam::channel::{unbounded, Receiver, SendError};
-use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossbeam::channel::{unbounded, Receiver};
+use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
 
 pub struct EventHandler {}
 

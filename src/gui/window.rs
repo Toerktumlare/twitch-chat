@@ -1,10 +1,8 @@
-use std::io::{Stdout, Write};
-
-use crossterm::Result;
+use std::io::Write;
 
 use super::{
     buffer::{Cell, Style},
-    screen::{self, Screen},
+    screen::Screen,
     Pos, Size,
 };
 

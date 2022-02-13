@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{
     fmt::Display,
     ops::{Add, AddAssign, Sub, SubAssign},

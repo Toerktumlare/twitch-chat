@@ -1,12 +1,10 @@
-#![allow(dead_code)]
-
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case},
     character::complete::{alpha1, alphanumeric0, alphanumeric1, digit1, multispace0, one_of},
     combinator::{opt, rest},
-    error::{context, Error, ErrorKind, VerboseError, VerboseErrorKind},
+    error::{context, ErrorKind, VerboseError},
     multi::{many1, separated_list0},
     sequence::{preceded, separated_pair, tuple},
     AsChar, IResult, InputTakeAtPosition,

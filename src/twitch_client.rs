@@ -1,8 +1,8 @@
+#![allow(dead_code)]
 use std::thread::{self, JoinHandle};
 
-use chrono::Timelike;
 use crossbeam::channel::{unbounded, Receiver};
-use tungstenite::{connect, error::UrlError, Error, Message as SockMessage};
+use tungstenite::{connect, Message as SockMessage};
 use url::Url;
 
 pub struct TwitchClient {

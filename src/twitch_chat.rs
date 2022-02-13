@@ -1,27 +1,18 @@
+use std::io::stdout;
+
 use crate::gui::{
-    buffer::{Cell, Style},
+    buffer::Style,
     event_handler::{Action, EventHandler},
     screen::Screen,
     window::Window,
     Pos, Size,
 };
 use chrono::Local;
-use crossbeam::channel::{select, unbounded};
-use crossterm::style::Color;
+use crossbeam::channel::select;
 use crossterm::{
-    cursor,
-    event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
-    terminal::{size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
+    terminal::{size, EnterAlternateScreen},
 };
-use std::{
-    env,
-    process::exit,
-    thread::{self, Thread},
-};
-use std::{io::stdout, time::Duration};
-use url::Url;
 
 use crate::chat_message::ChatMessage;
 use crate::color_gen;
@@ -31,7 +22,6 @@ pub struct TwitchChat {
     nick: String,
     channel: String,
     token: String,
-    twitch_api_url: Url,
 }
 
 static TWITCH_URL: &str = "ws://irc-ws.chat.twitch.tv:80";
@@ -46,7 +36,6 @@ impl TwitchChat {
             nick: nick.into(),
             channel: channel.into(),
             token: token.into(),
-            twitch_api_url: Url::parse(TWITCH_URL).unwrap(),
         }
     }
 

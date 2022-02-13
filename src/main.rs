@@ -1,33 +1,5 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-use chrono::Local;
-use crossbeam::channel::{select, unbounded};
-use crossterm::style::Color;
-use crossterm::{
-    cursor,
-    event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
-    execute,
-    terminal::{size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-use gui::{
-    buffer::{Cell, Style},
-    event_handler::{Action, EventHandler},
-    screen::Screen,
-    window::Window,
-    Pos, Size,
-};
-use std::alloc::System;
-use std::{
-    env,
-    process::exit,
-    thread::{self, Thread},
-};
-use std::{io::stdout, time::Duration};
+use std::{env, process::exit};
 use twitch_chat::TwitchChat;
-
-use crate::chat_message::ChatMessage;
-use crate::twitch_client::{Message, TwitchClient};
 
 mod arg_parser;
 mod chat_message;
