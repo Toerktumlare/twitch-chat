@@ -27,3 +27,5 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 - fix parsing of twitch reply chat messages
 - add unicode stuff for moderators
 - ~~add a unicode symbol that represents Kappa~~
+- add file logger, to be able to tail logs
+- some day solve consistent name color (twitch not sending default colors)

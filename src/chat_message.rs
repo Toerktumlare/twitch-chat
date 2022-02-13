@@ -848,7 +848,6 @@ mod test {
 
     #[test]
     fn should_format_date() {
-        let value: i64 = 1643578014567;
         assert_eq!(
             Utc.timestamp(1431648000, 0).to_string(),
             "2015-05-15 00:00:00 UTC"

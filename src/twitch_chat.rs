@@ -106,9 +106,7 @@ impl TwitchChat {
                             window.clear(&mut screen);
                             screen.render().unwrap();
                         },
-                        Action::Exit => {
-                            std::process::exit(0);
-                        }
+                        Action::Exit => std::process::exit(0)
                     }
                 }
             }

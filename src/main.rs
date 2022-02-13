@@ -11,15 +11,15 @@ mod twitch_client;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let arg_map = arg_parser::parse(&args);
+    let mut arg_map = arg_parser::parse(&args);
 
-    let nick = arg_map.get("nick").unwrap_or_else(|| {
+    let nick = arg_map.remove("nick").unwrap_or_else(|| {
         eprintln!("ERROR: no nick was provided");
         print_help();
         exit(1);
     });
 
-    let channel = arg_map.get("channel").unwrap_or_else(|| {
+    let channel = arg_map.remove("channel").unwrap_or_else(|| {
         eprintln!("ERROR: no channel was provided");
         print_help();
         exit(1);
@@ -31,7 +31,7 @@ fn main() {
         exit(1);
     });
 
-    let twitch_chat = TwitchChat::new(*nick, *channel, token);
+    let twitch_chat = TwitchChat::new(nick, channel, token);
     twitch_chat.start();
 }
 
