@@ -29,3 +29,7 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 - ~~add a unicode symbol that represents Kappa~~
 - add file logger, to be able to tail logs
 - some day solve consistent name color (twitch not sending default colors)
+- remember to never implement log rotation
+
+## Bugs
+ - cursor does not unhide (drop is maybe not called)

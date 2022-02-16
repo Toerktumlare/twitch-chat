@@ -1,3 +1,4 @@
+use log::logfactory::LogFactory;
 use std::{env, process::exit};
 use twitch_chat::TwitchChat;
 
@@ -5,31 +6,44 @@ mod arg_parser;
 mod chat_message;
 mod color_gen;
 mod gui;
+mod log;
 mod twitch_chat;
 mod twitch_client;
 
 fn main() {
+    let log = LogFactory::get_logger("Main");
+
+    log.info("Starting application");
+
     let args: Vec<String> = env::args().collect();
 
     let mut arg_map = arg_parser::parse(&args);
 
     let nick = arg_map.remove("nick").unwrap_or_else(|| {
+        log.error("ERROR: no nick was provided");
         eprintln!("ERROR: no nick was provided");
         print_help();
         exit(1);
     });
 
     let channel = arg_map.remove("channel").unwrap_or_else(|| {
+        log.error("ERROR: no channel was provided");
         eprintln!("ERROR: no channel was provided");
         print_help();
         exit(1);
     });
 
     let token = env::var("TWITCH_BOT_TOKEN").unwrap_or_else(|_| {
+        log.error("ERROR: TWITCH_BOT_TOKEN env variable not set");
         eprintln!("ERROR: TWITCH_BOT_TOKEN env variable not set");
         print_help();
         exit(1);
     });
+
+    log.info("Variables loaded");
+    log.info(format!("Nick: {}", nick));
+    log.info(format!("Channel: {}", channel));
+    log.info("Starting application");
 
     let twitch_chat = TwitchChat::new(nick, channel, token);
     twitch_chat.start();

@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     branch::alt,
-    bytes::complete::{tag, tag_no_case},
+    bytes::complete::tag,
     character::complete::{alpha1, alphanumeric0, alphanumeric1, digit1, multispace0, one_of},
     combinator::{opt, rest},
     error::{context, ErrorKind, VerboseError},
@@ -60,11 +60,6 @@ impl From<&str> for Badges {
 }
 
 type Res<T, U> = IResult<T, U, VerboseError<T>>;
-
-fn parse_message_type(input: &str) -> Res<&str, MessageType> {
-    context("message-type", tag_no_case("PRIVMSG"))(input)
-        .map(|(next_input, res)| (next_input, res.into()))
-}
 
 fn alphanumerichyphen1<T>(i: T) -> Res<T, T>
 where
