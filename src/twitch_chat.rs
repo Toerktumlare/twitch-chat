@@ -10,6 +10,8 @@ use crate::{
         window::Window,
         Pos, Size,
     },
+    log::get_logger,
+    // log::get_logger,
 };
 use chrono::Local;
 use crossbeam::select;
@@ -43,6 +45,9 @@ impl TwitchChat {
     }
 
     pub fn start(&self) {
+        let log = get_logger();
+        log.info("starting Twitch Chat");
+
         let output = stdout();
         let size = size().expect("Failed to fetch terminal size");
 
@@ -65,6 +70,7 @@ impl TwitchChat {
                     match msg.unwrap() {
                         Message::Info(message) => {
                             let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                            log.info(&message);
                             window.print(&mut screen, message, Style::none());
                             window.newline(&mut screen);
                         },
@@ -82,12 +88,16 @@ impl TwitchChat {
                                 window.print(&mut screen, " | ", Style::none());
                                 let msg = message.message.replace("Kappa", "\u{1F608}");
                                 let msg = msg.replace(":)", "\u{1F600}");
+
+                                log.info(msg.trim());
                                 window.print(&mut screen, msg.trim(), Style::none());
                                 window.newline(&mut screen);
                             } else if !message.starts_with('@') {
                                 let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
                                 window.print(&mut screen, message, Style::none());
                                 window.newline(&mut screen);
+                            } else {
+                                log.error(&message);
                             }
                         },
                         Message::Error(message) => {

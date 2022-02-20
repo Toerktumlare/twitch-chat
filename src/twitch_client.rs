@@ -1,9 +1,15 @@
 #![allow(dead_code)]
-use std::thread::{self, JoinHandle};
+use std::{
+    io::ErrorKind,
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 use crossbeam::channel::{unbounded, Receiver};
-use tungstenite::{connect, Message as SockMessage};
+use tungstenite::{connect, Error, Message as SockMessage};
 use url::Url;
+
+// use crate::log::get_logger;
 
 pub struct TwitchClient {
     token: String,
@@ -49,10 +55,15 @@ impl TwitchClient {
     }
 
     pub fn run(&self) -> (Receiver<Message>, Option<JoinHandle<()>>) {
+        // let log = get_logger();
+        // log.info("Starting Twitch-Client");
         let (tx, rx) = unbounded();
         let token = &self.token;
 
+        // log.info(format!("Connecting to url: {}", self.url));
+
         let (mut socket, response) = connect(Url::parse(self.url.as_str()).unwrap()).unwrap();
+
         tx.send(Message::Info(format!("Connected to {}", self.url)))
             .unwrap();
         tx.send(Message::Info(format!(
@@ -84,23 +95,33 @@ impl TwitchClient {
         tx.send(Message::Info(format!("Joined channel: {}", &self.channel)))
             .unwrap();
 
-        let handle = thread::spawn(move || loop {
-            let msg = socket.read_message().expect("error reading msgs");
-            let msg = msg.to_text().unwrap();
+        let builder = thread::Builder::new().name("twitch-client".to_string());
 
-            if msg.contains("PING :tmi.twitch.tv") {
-                socket
-                    .write_message(SockMessage::Text("PONG :tmi.twitch.tv".into()))
-                    .unwrap();
-            } else {
-                let msg = if msg.contains("PRIVMSG") {
-                    Message::privmsg(msg)
-                } else {
-                    Message::info(msg)
-                };
-                tx.send(msg).unwrap();
-            }
-        });
+        let handle = builder
+            .spawn(move || loop {
+                thread::sleep(Duration::from_secs(1));
+                match socket.read_message() {
+                    Ok(msg) => {
+                        let msg = msg.to_text().unwrap();
+
+                        if msg.contains("PING :tmi.twitch.tv") {
+                            socket
+                                .write_message(SockMessage::Text("PONG :tmi.twitch.tv".into()))
+                                .unwrap();
+                        } else {
+                            let msg = if msg.contains("PRIVMSG") {
+                                Message::privmsg(msg)
+                            } else {
+                                Message::info(msg)
+                            };
+                            tx.send(msg).unwrap();
+                        }
+                    }
+                    Err(Error::Io(ref err)) if err.kind() == ErrorKind::WouldBlock => break,
+                    Err(_) => {} // Don't look here
+                }
+            })
+            .unwrap();
         (rx, Some(handle))
     }
 }

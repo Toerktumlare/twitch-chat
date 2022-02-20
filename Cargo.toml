@@ -8,7 +8,7 @@ crossbeam = "0.8.1"
 crossterm = "0.23.0"
 nom = "7.1.0"
 rand = "0.8.0"
-tungstenite = "0.16.0"
+tungstenite = "0.17.1"
 unicode-width = "0.1.9"
 url = "2.2.2"
 
