@@ -24,12 +24,14 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 - ~~breakout application from main method~~
 - ~~add a unicode symbol that represents Kappa~~
 - ~~add file logger, to be able to tail logs~~
+- ~~ability to include some context while logging~~
+- ~~ability to set log levels in logger~~
 - remove tungstenite-rs in favor of ws-rs
-- ability to set log levels in logger
-- ability to include some context while logging
-- Implement `Drop` for `EventHandler`
-- identify smileys and replace with unicode
 - add `--debug` flag so we can read debug messages in chat, including broken chat messages
+- Overhaul the logging, and add proper logging in the entire application.
+- implement a "padder" struct/function that will fill out with whitespaces.
+- implement `Drop` for `EventHandler`
+- identify smileys and replace with unicode
 - fix parsing of twitch reply chat messages
 - add unicode stuff for moderators
 - some day solve consistent name color (twitch not sending default colors)

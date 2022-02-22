@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 use std::{
+    any::type_name,
     io::ErrorKind,
     thread::{self, JoinHandle},
-    time::Duration,
 };
 
 use crossbeam::channel::{unbounded, Receiver};
 use tungstenite::{connect, Error, Message as SockMessage};
 use url::Url;
 
-// use crate::log::get_logger;
+use crate::log::get_logger;
 
 pub struct TwitchClient {
     token: String,
@@ -55,12 +55,15 @@ impl TwitchClient {
     }
 
     pub fn run(&self) -> (Receiver<Message>, Option<JoinHandle<()>>) {
-        // let log = get_logger();
-        // log.info("Starting Twitch-Client");
+        let log = get_logger();
+        log.info("Starting Twitch-Client", type_name::<TwitchClient>());
         let (tx, rx) = unbounded();
         let token = &self.token;
 
-        // log.info(format!("Connecting to url: {}", self.url));
+        log.debug(
+            format!("Connecting to url: {}", self.url),
+            type_name::<TwitchClient>(),
+        );
 
         let (mut socket, response) = connect(Url::parse(self.url.as_str()).unwrap()).unwrap();
 
@@ -99,9 +102,9 @@ impl TwitchClient {
 
         let handle = builder
             .spawn(move || loop {
-                thread::sleep(Duration::from_secs(1));
                 match socket.read_message() {
                     Ok(msg) => {
+                        log.debug("received a message", type_name::<TwitchClient>());
                         let msg = msg.to_text().unwrap();
 
                         if msg.contains("PING :tmi.twitch.tv") {

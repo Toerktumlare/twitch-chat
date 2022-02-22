@@ -1,4 +1,4 @@
-use std::io::stdout;
+use std::{any::type_name, io::stdout};
 
 use crate::{
     chat_message::ChatMessage,
@@ -11,7 +11,6 @@ use crate::{
         Pos, Size,
     },
     log::get_logger,
-    // log::get_logger,
 };
 use chrono::Local;
 use crossbeam::select;
@@ -46,7 +45,7 @@ impl TwitchChat {
 
     pub fn start(&self) {
         let log = get_logger();
-        log.info("starting Twitch Chat");
+        log.info("starting Twitch Chat", type_name::<TwitchChat>());
 
         let output = stdout();
         let size = size().expect("Failed to fetch terminal size");
@@ -70,7 +69,7 @@ impl TwitchChat {
                     match msg.unwrap() {
                         Message::Info(message) => {
                             let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
-                            log.info(&message);
+                            log.info(&message, type_name::<TwitchChat>());
                             window.print(&mut screen, message, Style::none());
                             window.newline(&mut screen);
                         },
@@ -89,7 +88,7 @@ impl TwitchChat {
                                 let msg = message.message.replace("Kappa", "\u{1F608}");
                                 let msg = msg.replace(":)", "\u{1F600}");
 
-                                log.info(msg.trim());
+                                log.info(msg.trim(), type_name::<TwitchChat>());
                                 window.print(&mut screen, msg.trim(), Style::none());
                                 window.newline(&mut screen);
                             } else if !message.starts_with('@') {
@@ -97,7 +96,7 @@ impl TwitchChat {
                                 window.print(&mut screen, message, Style::none());
                                 window.newline(&mut screen);
                             } else {
-                                log.error(&message);
+                                log.error(&message, type_name::<TwitchChat>());
                             }
                         },
                         Message::Error(message) => {

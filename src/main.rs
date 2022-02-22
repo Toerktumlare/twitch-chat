@@ -1,4 +1,4 @@
-use log::get_logger;
+use log::{get_logger_mut, LogLevel};
 use std::{env, process::exit};
 use twitch_chat::TwitchChat;
 
@@ -11,8 +11,10 @@ mod twitch_chat;
 mod twitch_client;
 
 fn main() {
-    let log = get_logger();
-    log.info("Starting application");
+    let log = get_logger_mut();
+    log.set_level(LogLevel::Debug);
+
+    log.info("Starting application", "main");
     let args: Vec<String> = env::args().collect();
 
     let mut arg_map = arg_parser::parse(&args);
@@ -35,9 +37,9 @@ fn main() {
         exit(1);
     });
 
-    log.info("Config:");
-    log.info(format!("\t nick: {}", nick));
-    log.info(format!("\t channel: {}", nick));
+    log.info("Config:", "main");
+    log.info(format!("\t nick: {}", nick), "main");
+    log.info(format!("\t channel: {}", nick), "main");
 
     let twitch_chat = TwitchChat::new(nick, channel, token);
     twitch_chat.start();

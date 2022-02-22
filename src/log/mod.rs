@@ -12,13 +12,15 @@ use crate::log::logfactory::Logger;
 pub mod file_appender;
 pub mod logfactory;
 
-#[derive(Debug)]
+pub static mut LOGGER: MaybeUninit<SingletonLogger> = MaybeUninit::uninit();
+
+#[derive(Debug, Eq, Copy, Clone, PartialEq, PartialOrd)]
 pub enum LogLevel {
-    Trace,
-    Debug,
-    Info,
+    Error = 1,
     Warn,
-    Error,
+    Info,
+    Debug,
+    Trace,
 }
 
 impl Display for LogLevel {
@@ -26,8 +28,8 @@ impl Display for LogLevel {
         let log_level = match *self {
             LogLevel::Trace => "TRACE",
             LogLevel::Debug => "DEBUG",
-            LogLevel::Info => "INFO",
-            LogLevel::Warn => "WARN",
+            LogLevel::Info => " INFO",
+            LogLevel::Warn => " WARN",
             LogLevel::Error => "ERROR",
         };
         write!(f, "{}", log_level)
@@ -39,7 +41,7 @@ pub struct LogEvent {
     timestamp: DateTime<Utc>,
     log_level: LogLevel,
     thread_name: String,
-    logger_name: String,
+    type_name: String,
     message: String,
 }
 
@@ -48,10 +50,12 @@ impl Display for LogEvent {
         write!(
             f,
             "| {} | {} | {} | {} | {}",
-            self.timestamp.with_timezone(&Local).format("%H:%M:%S"),
+            self.timestamp
+                .with_timezone(&Local)
+                .format("%Y-%m-%d %H:%M:%S%.3f"),
             self.log_level,
             self.thread_name,
-            self.logger_name,
+            self.type_name,
             self.message,
         )
     }
@@ -61,14 +65,14 @@ impl LogEvent {
         now: DateTime<Utc>,
         thread_name: String,
         log_level: LogLevel,
-        logger_name: String,
+        type_name: String,
         message: String,
     ) -> Self {
         Self {
             timestamp: now,
             thread_name,
             log_level,
-            logger_name,
+            type_name,
             message,
         }
     }
@@ -99,15 +103,28 @@ impl DerefMut for SingletonLogger {
 
 pub fn get_logger() -> &'static SingletonLogger {
     static ONCE: Once = Once::new();
-    static mut LOGGER: MaybeUninit<SingletonLogger> = MaybeUninit::uninit();
 
     unsafe {
         ONCE.call_once(|| {
             let logger = SingletonLogger {
-                inner: Logger::new("root"),
+                inner: Logger::new(),
             };
             LOGGER.write(logger);
         });
         LOGGER.assume_init_ref()
+    }
+}
+
+pub fn get_logger_mut() -> &'static mut SingletonLogger {
+    static ONCE: Once = Once::new();
+
+    unsafe {
+        ONCE.call_once(|| {
+            let logger = SingletonLogger {
+                inner: Logger::new(),
+            };
+            LOGGER.write(logger);
+        });
+        LOGGER.assume_init_mut()
     }
 }
