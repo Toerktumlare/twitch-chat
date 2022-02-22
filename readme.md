@@ -1,6 +1,10 @@
-## twitch-chat
+## twitch-chat (WIP)
 
-this is a tiny TUI twitch chat listener that runs in the terminal and prints the chat messages.
+<p align="center">
+  <img width="460" height="300" src="/images/chat.jpg">
+</p>
+
+this is a tiny TUI twitch chat listener that runs in the terminal and prints chat messages to the screen.
 
 ### How to run
 If you want to run this there are some steps that needs to be taken.
