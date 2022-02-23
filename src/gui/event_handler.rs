@@ -3,12 +3,11 @@ use std::thread::{self, JoinHandle};
 use crossbeam::channel::{unbounded, Receiver};
 use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
 
-pub struct EventHandler {}
+use crate::log::get_logger;
 
-impl EventHandler {
-    pub fn new() -> Self {
-        Self {}
-    }
+pub struct EventHandler {
+    pub receiver: Receiver<Action>,
+    thread: JoinHandle<()>,
 }
 
 pub enum Action {
@@ -17,23 +16,27 @@ pub enum Action {
 }
 
 impl EventHandler {
-    pub fn run(&self) -> (Receiver<Action>, JoinHandle<()>) {
-        let (tx, rx) = unbounded();
+    pub fn new() -> EventHandler {
+        let (sender, receiver) = unbounded();
+        let _log = get_logger();
         let join_handle = thread::spawn(move || loop {
             if let Ok(event) = read() {
                 match event {
                     Event::Key(KeyEvent {
                         code: KeyCode::Char('q'),
                         modifiers: KeyModifiers::NONE,
-                    }) => tx.send(Action::Exit).unwrap_or(()),
+                    }) => sender.send(Action::Exit).unwrap(),
                     Event::Key(KeyEvent {
                         code: KeyCode::Char('c'),
                         modifiers: KeyModifiers::NONE,
-                    }) => tx.send(Action::Clear).unwrap_or(()),
+                    }) => sender.send(Action::Clear).unwrap_or(()),
                     _ => break,
                 };
             }
         });
-        (rx, join_handle)
+        Self {
+            receiver,
+            thread: join_handle,
+        }
     }
 }

@@ -17,26 +17,19 @@ impl LogWorker {
         mut appenders: Vec<Box<dyn Write + Send + Sync>>,
     ) -> JoinHandle<()> {
         thread::spawn(move || loop {
-            match receiver.recv() {
-                Ok(event) => {
-                    if let LogEvents::LogEvent(event) = event {
+            while let Ok(event) = receiver.recv() {
+                match event {
+                    LogEvents::LogEvent(data) => {
                         appenders.iter_mut().for_each(|appender| {
-                            let event_text = format!("{}{}", event, "\n");
+                            let event_text = format!("{}{}", data, "\n");
                             let _ = appender
                                 .write(event_text.as_bytes())
                                 .expect("could not write");
 
-                            if appender.flush().is_err() {
-                                // log.error("Could not flush");
-                            }
+                            appender.flush().unwrap();
                         });
-                    } else {
-                        break;
                     }
-                }
-                Err(_) => {
-                    // log.error("could not receive message");
-                    break;
+                    LogEvents::Terminate => break,
                 }
             }
         })
@@ -114,7 +107,6 @@ impl Logger {
 
 impl Drop for SingletonLogger {
     fn drop(&mut self) {
-        println!("we are dropping");
         self.sender.send(LogEvents::Terminate).unwrap();
         thread::sleep(Duration::from_millis(10));
         if let Some(thread) = self.log_worker.take() {

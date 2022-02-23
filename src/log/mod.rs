@@ -7,10 +7,10 @@ use std::{
 
 use chrono::{DateTime, Local, Utc};
 
-use crate::log::logfactory::Logger;
+use crate::log::logger::Logger;
 
 pub mod file_appender;
-pub mod logfactory;
+pub mod logger;
 
 pub static mut LOGGER: MaybeUninit<SingletonLogger> = MaybeUninit::uninit();
 

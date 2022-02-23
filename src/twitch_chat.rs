@@ -61,61 +61,63 @@ impl TwitchChat {
         screen.enable_raw_mode().expect("could not enable raw mode");
 
         let event_handler = EventHandler::new();
-        let (event_rx, _join_handle) = event_handler.run();
 
         loop {
             select! {
-                recv(client_receiver) -> msg => {
-                    match msg.unwrap() {
-                        Message::Info(message) => {
-                            let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
-                            log.info(&message, type_name::<TwitchChat>());
-                            window.print(&mut screen, message, Style::none());
-                            window.newline(&mut screen);
-                        },
-                        Message::PrivMsg(message) => {
-                            if let Ok(message) = ChatMessage::parse(&message) {
-                                window.print(&mut screen, "| ", Style::none());
-                                window.print(&mut screen,
-                                    message.meta_data.tmi_sent_ts.with_timezone(&Local)
-                                        .format("%H:%M:%S")
-                                        .to_string(),
-                                    Style::none());
-                                window.print(&mut screen, " | ", Style::none());
-                                let (r, g, b) = message.meta_data.color.flatten().unwrap_or_else(color_gen::get_color);
-                                window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
-                                window.print(&mut screen, " | ", Style::none());
-                                let msg = message.message.replace("Kappa", "\u{1F608}");
-                                let msg = msg.replace(":)", "\u{1F600}");
-
-                                log.info(msg.trim(), type_name::<TwitchChat>());
-                                window.print(&mut screen, msg.trim(), Style::none());
-                                window.newline(&mut screen);
-                            } else if !message.starts_with('@') {
+                recv(client_receiver) -> chat_event => {
+                    if let Ok(chat_event) = chat_event {
+                        match chat_event {
+                            Message::Info(message) => {
                                 let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                                log.info(&message, type_name::<TwitchChat>());
                                 window.print(&mut screen, message, Style::none());
                                 window.newline(&mut screen);
-                            } else {
-                                log.error(&message, type_name::<TwitchChat>());
-                            }
-                        },
-                        Message::Error(message) => {
-                            let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
-                            window.print(&mut screen, message, Style::fg(Some(Color::Red)));
-                            window.newline(&mut screen);
-                        },
+                            },
+                            Message::PrivMsg(message) => {
+                                if let Ok(message) = ChatMessage::parse(&message) {
+                                    window.print(&mut screen, "| ", Style::none());
+                                    window.print(&mut screen,
+                                        message.meta_data.tmi_sent_ts.with_timezone(&Local)
+                                            .format("%H:%M:%S")
+                                            .to_string(),
+                                        Style::none());
+                                    window.print(&mut screen, " | ", Style::none());
+                                    let (r, g, b) = message.meta_data.color.flatten().unwrap_or_else(color_gen::get_color);
+                                    window.print(&mut screen, message.meta_data.display_name.unwrap(), Style::fg(Some(Color::Rgb {r, g, b})));
+                                    window.print(&mut screen, " | ", Style::none());
+                                    let msg = message.message.replace("Kappa", "\u{1F608}");
+                                    let msg = msg.replace(":)", "\u{1F600}");
 
+                                    log.info(msg.trim(), type_name::<TwitchChat>());
+                                    window.print(&mut screen, msg.trim(), Style::none());
+                                    window.newline(&mut screen);
+                                } else if !message.starts_with('@') {
+                                    let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                                    window.print(&mut screen, message, Style::none());
+                                    window.newline(&mut screen);
+                                } else {
+                                    log.error(&message, type_name::<TwitchChat>());
+                                }
+                            },
+                            Message::Error(message) => {
+                                let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                                window.print(&mut screen, message, Style::fg(Some(Color::Red)));
+                                window.newline(&mut screen);
+                            },
+                        }
+                        screen.render().unwrap();
                     }
-                    screen.render().unwrap();
                 },
-                recv(event_rx) -> msg => {
-                    let msg = msg.unwrap();
-                    match msg {
-                        Action::Clear => {
-                            window.clear(&mut screen);
-                            screen.render().unwrap();
-                        },
-                        Action::Exit => std::process::exit(0)
+                recv(event_handler.receiver) -> action => {
+                    if let Ok(action) = action {
+                        match action {
+                            Action::Clear => {
+                                window.clear(&mut screen);
+                                screen.render().unwrap();
+                            },
+                            Action::Exit => std::process::exit(0)
+                        }
+
                     }
                 }
             }
