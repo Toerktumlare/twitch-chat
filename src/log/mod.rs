@@ -12,15 +12,16 @@ use crate::log::logger::Logger;
 pub mod file_appender;
 pub mod logger;
 
+pub static ONCE: std::sync::Once = Once::new();
 pub static mut LOGGER: MaybeUninit<SingletonLogger> = MaybeUninit::uninit();
 
 #[derive(Debug, Eq, Copy, Clone, PartialEq, PartialOrd)]
 pub enum LogLevel {
     Error = 1,
-    Warn,
-    Info,
-    Debug,
-    Trace,
+    Warn = 2,
+    Info = 3,
+    Debug = 4,
+    Trace = 5,
 }
 
 impl Display for LogLevel {
@@ -82,7 +83,7 @@ pub(crate) enum LogEvents {
     LogEvent(LogEvent),
     Terminate,
 }
-
+#[derive(Debug)]
 pub struct SingletonLogger {
     inner: Logger,
 }
@@ -102,8 +103,6 @@ impl DerefMut for SingletonLogger {
 }
 
 pub fn get_logger() -> &'static SingletonLogger {
-    static ONCE: Once = Once::new();
-
     unsafe {
         ONCE.call_once(|| {
             let logger = SingletonLogger {
@@ -116,8 +115,6 @@ pub fn get_logger() -> &'static SingletonLogger {
 }
 
 pub fn get_logger_mut() -> &'static mut SingletonLogger {
-    static ONCE: Once = Once::new();
-
     unsafe {
         ONCE.call_once(|| {
             let logger = SingletonLogger {

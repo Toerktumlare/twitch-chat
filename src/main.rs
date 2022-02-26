@@ -14,6 +14,7 @@ fn main() {
     let log = get_logger_mut();
     log.set_level(LogLevel::Debug);
 
+    log.debug(format!("logger values: {:#?}", log), "main");
     log.info("Starting application", "main");
     let args: Vec<String> = env::args().collect();
 
@@ -39,7 +40,7 @@ fn main() {
 
     log.info("Config:", "main");
     log.info(format!("\t nick: {}", nick), "main");
-    log.info(format!("\t channel: {}", nick), "main");
+    log.info(format!("\t channel: {}", channel), "main");
 
     let twitch_chat = TwitchChat::new(nick, channel, token);
     twitch_chat.start();

@@ -11,6 +11,7 @@ use crate::{
         Pos, Size,
     },
     log::get_logger,
+    twitch_client::TwitchClient,
 };
 use chrono::Local;
 use crossbeam::select;
@@ -20,7 +21,7 @@ use crossterm::{
     terminal::{size, EnterAlternateScreen},
 };
 
-use crate::twitch_client::{Message, TwitchClient};
+use crate::twitch_client::Message;
 
 pub struct TwitchChat {
     nick: String,
@@ -54,17 +55,14 @@ impl TwitchChat {
 
         let mut screen = Screen::new(output, Size::new(size.0, size.1)).unwrap();
         let mut window = Window::new(Pos::new(0, 0), Size::new(size.0, size.1));
-
-        let client = TwitchClient::new(TWITCH_URL, &self.token, &self.channel, &self.nick);
-        let (client_receiver, _join_handle) = client.run();
-
         screen.enable_raw_mode().expect("could not enable raw mode");
 
+        let client = TwitchClient::new(TWITCH_URL, &self.token, &self.channel, &self.nick).unwrap();
         let event_handler = EventHandler::new();
 
         loop {
             select! {
-                recv(client_receiver) -> chat_event => {
+                recv(client.receiver) -> chat_event => {
                     if let Ok(chat_event) = chat_event {
                         match chat_event {
                             Message::Info(message) => {
@@ -88,10 +86,11 @@ impl TwitchChat {
                                     let msg = message.message.replace("Kappa", "\u{1F608}");
                                     let msg = msg.replace(":)", "\u{1F600}");
 
-                                    log.info(msg.trim(), type_name::<TwitchChat>());
+                                    log.debug(msg.trim(), type_name::<TwitchChat>());
                                     window.print(&mut screen, msg.trim(), Style::none());
                                     window.newline(&mut screen);
                                 } else if !message.starts_with('@') {
+                                    log.error(message.trim(), type_name::<TwitchChat>());
                                     let message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
                                     window.print(&mut screen, message, Style::none());
                                     window.newline(&mut screen);

@@ -36,8 +36,9 @@ impl LogWorker {
     }
 }
 
+#[derive(Debug)]
 pub struct Logger {
-    log_level: LogLevel,
+    pub log_level: LogLevel,
     sender: Sender<LogEvents>,
     log_worker: Option<JoinHandle<()>>,
 }
@@ -60,7 +61,6 @@ impl Logger {
         }
     }
 
-    #[allow(dead_code)]
     pub fn set_level(&mut self, log_level: LogLevel) {
         self.log_level = log_level;
     }
@@ -91,7 +91,7 @@ impl Logger {
     }
 
     fn log(&self, log_level: LogLevel, message: String, type_name: impl Into<String>) {
-        if log_level < self.log_level {
+        if log_level >= self.log_level {
             return;
         }
         let log_event = LogEvent::new(
