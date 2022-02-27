@@ -1,13 +1,13 @@
 use std::{
+    any::type_name,
     io::Write,
     thread::{self, JoinHandle},
-    time::Duration,
 };
 
 use chrono::Utc;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 
-use super::{file_appender::FileAppender, LogEvent, LogEvents, LogLevel, SingletonLogger};
+use super::{file_appender::FileAppender, get_logger, LogEvent, LogEvents, LogLevel};
 
 struct LogWorker;
 
@@ -16,7 +16,7 @@ impl LogWorker {
         receiver: Receiver<LogEvents>,
         mut appenders: Vec<Box<dyn Write + Send + Sync>>,
     ) -> JoinHandle<()> {
-        thread::spawn(move || loop {
+        thread::spawn(move || {
             while let Ok(event) = receiver.recv() {
                 match event {
                     LogEvents::LogEvent(data) => {
@@ -29,7 +29,6 @@ impl LogWorker {
                             appender.flush().unwrap();
                         });
                     }
-                    LogEvents::Terminate => break,
                 }
             }
         })
@@ -39,7 +38,7 @@ impl LogWorker {
 #[derive(Debug)]
 pub struct Logger {
     pub log_level: LogLevel,
-    sender: Sender<LogEvents>,
+    sender: Option<Sender<LogEvents>>,
     log_worker: Option<JoinHandle<()>>,
 }
 
@@ -56,7 +55,7 @@ impl Logger {
 
         Self {
             log_level: LogLevel::Info,
-            sender,
+            sender: Some(sender),
             log_worker: Some(log_worker),
         }
     }
@@ -91,7 +90,7 @@ impl Logger {
     }
 
     fn log(&self, log_level: LogLevel, message: String, type_name: impl Into<String>) {
-        if log_level >= self.log_level {
+        if log_level > self.log_level {
             return;
         }
         let log_event = LogEvent::new(
@@ -101,16 +100,15 @@ impl Logger {
             type_name.into(),
             message,
         );
-        self.sender.send(LogEvents::LogEvent(log_event)).unwrap();
-    }
-}
-
-impl Drop for SingletonLogger {
-    fn drop(&mut self) {
-        self.sender.send(LogEvents::Terminate).unwrap();
-        thread::sleep(Duration::from_millis(10));
-        if let Some(thread) = self.log_worker.take() {
-            thread.join().unwrap();
+        if let Some(s) = self.sender.as_ref() {
+            s.send(LogEvents::LogEvent(log_event)).unwrap()
         }
+    }
+
+    pub fn close(&mut self) {
+        let log = get_logger();
+        log.debug("Closing down logger", type_name::<Logger>());
+        drop(self.sender.take());
+        self.log_worker.take().map(JoinHandle::join);
     }
 }

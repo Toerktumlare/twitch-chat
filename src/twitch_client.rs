@@ -3,19 +3,23 @@ use crate::log::get_logger;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use std::{
     any::type_name,
+    borrow::Cow,
     error::Error,
     io::ErrorKind,
     net::TcpStream,
-    ops::Deref,
+    ops::{Deref, DerefMut},
     thread::{self, JoinHandle},
     time::Duration,
 };
 use tungstenite::{
-    connect, stream::MaybeTlsStream, Error as WebClientErr, Message as SocketMessage, WebSocket,
+    connect,
+    protocol::{frame::coding::CloseCode, CloseFrame},
+    stream::MaybeTlsStream,
+    Error as WebClientErr, Message as SocketMessage, WebSocket,
 };
 
 pub struct TwitchClient {
-    pub worker: Worker,
+    worker: Worker,
     sender: Sender<Message>,
 }
 
@@ -24,6 +28,7 @@ pub enum Message {
     Info(String),
     PrivMsg(String),
     Error(String),
+    Terminate,
 }
 
 impl Message {
@@ -121,19 +126,32 @@ impl Deref for TwitchClient {
     }
 }
 
+impl DerefMut for TwitchClient {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.worker
+    }
+}
+
+impl Drop for TwitchClient {
+    fn drop(&mut self) {
+        self.sender.send(Message::Terminate).unwrap();
+        self.thread.take().map(JoinHandle::join);
+    }
+}
+
 pub struct Worker {
     name: String,
-    thread: JoinHandle<()>,
+    thread: Option<JoinHandle<()>>,
     pub receiver: Receiver<Message>,
 }
 
 impl Worker {
     pub fn run(
         name: impl Into<String>,
-        _receiver: Receiver<Message>,
+        receiver: Receiver<Message>,
         mut socket: WebSocket<MaybeTlsStream<TcpStream>>,
     ) -> Result<Worker, Box<dyn Error>> {
-        let (sender, receiver) = unbounded();
+        let (tx, rx) = unbounded();
         let name = name.into();
         let handle = thread::Builder::new().name(name.clone()).spawn(move || {
             let log = get_logger();
@@ -151,24 +169,34 @@ impl Worker {
                                 ))
                                 .unwrap();
                         } else if msg.contains("PRIVMSG") {
-                            sender.send(Message::PrivMsg(msg.into())).unwrap();
+                            tx.send(Message::PrivMsg(msg.into())).unwrap();
                         }
                     }
                     Err(WebClientErr::Io(ref err)) if err.kind() == ErrorKind::WouldBlock => {}
                     Err(err) => match err {
                         WebClientErr::ConnectionClosed => {
-                            log.info("Connection closed", type_name::<Worker>())
+                            log.debug("Connection closed", type_name::<Worker>());
+                            break;
                         }
                         _ => log.error("something very unexpected happened", type_name::<Worker>()),
                     },
+                }
+                if let Ok(Message::Terminate) = receiver.try_recv() {
+                    log.debug("Closing connection to Twitch", type_name::<Worker>());
+                    socket
+                        .close(Some(CloseFrame {
+                            code: CloseCode::Normal,
+                            reason: Cow::Borrowed(""),
+                        }))
+                        .unwrap();
                 }
             }
         })?;
 
         Ok(Worker {
             name,
-            thread: handle,
-            receiver,
+            thread: Some(handle),
+            receiver: rx,
         })
     }
 }

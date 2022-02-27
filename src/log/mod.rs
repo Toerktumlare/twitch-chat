@@ -67,21 +67,20 @@ impl LogEvent {
         thread_name: String,
         log_level: LogLevel,
         type_name: String,
-        message: String,
+        message: impl Into<String>,
     ) -> Self {
         Self {
             timestamp: now,
             thread_name,
             log_level,
             type_name,
-            message,
+            message: message.into(),
         }
     }
 }
 
 pub(crate) enum LogEvents {
     LogEvent(LogEvent),
-    Terminate,
 }
 #[derive(Debug)]
 pub struct SingletonLogger {

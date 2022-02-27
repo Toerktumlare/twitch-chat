@@ -103,6 +103,7 @@ impl TwitchChat {
                                 window.print(&mut screen, message, Style::fg(Some(Color::Red)));
                                 window.newline(&mut screen);
                             },
+                            _ => {},
                         }
                         screen.render().unwrap();
                     }
@@ -114,12 +115,13 @@ impl TwitchChat {
                                 window.clear(&mut screen);
                                 screen.render().unwrap();
                             },
-                            Action::Exit => std::process::exit(0)
+                            Action::Exit => break,
                         }
 
                     }
                 }
             }
         }
+        log.info("Exiting twitch chat", type_name::<TwitchChat>());
     }
 }

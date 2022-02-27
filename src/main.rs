@@ -44,6 +44,8 @@ fn main() {
 
     let twitch_chat = TwitchChat::new(nick, channel, token);
     twitch_chat.start();
+
+    log.close();
 }
 
 fn print_help() {
