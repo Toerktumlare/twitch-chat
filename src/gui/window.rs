@@ -9,7 +9,7 @@ use super::{
 pub struct Window {
     pos: Pos,
     pub size: Size,
-    cursor: Pos,
+    pub cursor: Pos,
 }
 
 impl Window {

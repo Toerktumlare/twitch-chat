@@ -25,24 +25,8 @@ pub struct TwitchClient {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Message {
-    Info(String),
-    PrivMsg(String),
-    Error(String),
+    Text(String),
     Terminate,
-}
-
-impl Message {
-    pub fn info(text: impl Into<String>) -> Self {
-        Message::Info(text.into())
-    }
-
-    pub fn privmsg(text: impl Into<String>) -> Self {
-        Message::PrivMsg(text.into())
-    }
-
-    pub fn error(text: impl Into<String>) -> Self {
-        Message::Error(text.into())
-    }
 }
 
 impl TwitchClient {
@@ -168,8 +152,8 @@ impl Worker {
                                     "PONG :tmi.twitch.tv".into(),
                                 ))
                                 .unwrap();
-                        } else if msg.contains("PRIVMSG") {
-                            tx.send(Message::PrivMsg(msg.into())).unwrap();
+                        } else {
+                            tx.send(Message::Text(msg.into())).unwrap();
                         }
                     }
                     Err(WebClientErr::Io(ref err)) if err.kind() == ErrorKind::WouldBlock => {}
@@ -189,6 +173,7 @@ impl Worker {
                             reason: Cow::Borrowed(""),
                         }))
                         .unwrap();
+                    break;
                 }
             }
         })?;
