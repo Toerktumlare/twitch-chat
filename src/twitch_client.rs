@@ -173,7 +173,6 @@ impl Worker {
                             reason: Cow::Borrowed(""),
                         }))
                         .unwrap();
-                    break;
                 }
             }
         })?;
