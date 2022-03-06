@@ -3,7 +3,7 @@ use std::{any::type_name, io::Write};
 use chrono::Local;
 use crossterm::style::Color;
 
-use crate::{chat_message::ChatMessage, color_gen, log::get_logger};
+use crate::{chat_message::ChatMessage, color_gen, log::get_logger, string_padder::StringPadder};
 
 use super::{buffer::Style, screen::Screen, window::Window, Pos, Size};
 
@@ -11,11 +11,17 @@ pub struct ChatWidget<'a> {
     window: &'a mut Window,
     size: Size,
     pos: Pos,
+    padder: StringPadder,
 }
 
 impl<'a> ChatWidget<'a> {
     pub fn new(window: &'a mut Window, pos: Pos, size: Size) -> Self {
-        Self { window, pos, size }
+        Self {
+            window,
+            pos,
+            size,
+            padder: StringPadder::new(),
+        }
     }
 
     pub fn print(&mut self, screen: &mut Screen<impl Write>, message: ChatMessage) {
@@ -37,9 +43,13 @@ impl<'a> ChatWidget<'a> {
             .color
             .flatten()
             .unwrap_or_else(color_gen::get_color);
+
+        let display_name = message.meta_data.display_name.unwrap();
+        let display_name = self.padder.add_pad(display_name);
+
         self.window.print(
             screen,
-            message.meta_data.display_name.unwrap(),
+            display_name,
             Style::fg(Some(Color::Rgb { r, g, b })),
         );
         self.window.print(screen, " | ", Style::none());
@@ -52,6 +62,7 @@ impl<'a> ChatWidget<'a> {
     }
 
     pub fn clear(&mut self, screen: &mut Screen<impl Write>) {
+        self.padder.reset();
         screen.erase_region(self.pos, self.size);
         self.window.cursor = Pos::zero();
     }

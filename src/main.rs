@@ -7,6 +7,7 @@ mod chat_message;
 mod color_gen;
 mod gui;
 mod log;
+mod string_padder;
 mod twitch_chat;
 mod twitch_client;
 

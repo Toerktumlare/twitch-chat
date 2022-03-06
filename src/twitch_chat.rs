@@ -71,7 +71,7 @@ impl TwitchChat {
                                 let _message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
                                 // chat.print(&mut screen, message);
                             } else {
-                                log.error(&message, type_name::<TwitchChat>());
+                                log.debug(&message, type_name::<TwitchChat>());
                             }
                         }
                         screen.render().unwrap();

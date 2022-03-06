@@ -30,11 +30,10 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 - ~~add file logger, to be able to tail logs~~
 - ~~ability to include some context while logging~~
 - ~~ability to set log levels in logger~~
-- remove tungstenite-rs in favor of ws-rs
 - add `--debug` flag so we can read debug messages in chat, including broken chat messages
-- Overhaul the logging, and add proper logging in the entire application.
+- ~~Overhaul the logging, and add proper logging in the entire application.~~
 - implement a "padder" struct/function that will fill out with whitespaces.
-- implement `Drop` for `EventHandler`
+- ~~implement `Drop` for `EventHandler`~~
 - identify smileys and replace with unicode
 - fix parsing of twitch reply chat messages
 - add unicode stuff for moderators

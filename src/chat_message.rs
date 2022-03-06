@@ -834,14 +834,6 @@ mod test {
     }
 
     #[test]
-    fn should_parse_privmsg_into_enum() {
-        assert_eq!(
-            parse_message_type("PRIVMSG #toerktumlare: foobar"),
-            Ok((" #toerktumlare: foobar", MessageType::PrivMsg))
-        );
-    }
-
-    #[test]
     fn should_format_date() {
         assert_eq!(
             Utc.timestamp(1431648000, 0).to_string(),
