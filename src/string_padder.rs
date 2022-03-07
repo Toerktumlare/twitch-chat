@@ -12,13 +12,11 @@ impl StringPadder {
     pub fn add_pad(&mut self, value: impl Into<String>) -> String {
         let value = value.into();
         let current = value.chars().count() as u32;
-        let index = self.current_max.saturating_sub(current);
-
-        let ws = &(0..index).into_iter().fold(String::new(), |a, _| a + " ");
+        let value = format!("{:1$}", value, self.current_max as usize);
         if self.current_max < current {
             self.current_max = current;
         }
-        value + ws
+        value
     }
 
     pub fn reset(&mut self) {
