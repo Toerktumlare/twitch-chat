@@ -41,8 +41,13 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 
 ### Parser todos:
 [ ] move metadata to own file
+
 [ ] divide metadata up into several structs, user, badges etc.
+
 [ ] write more specific char parsers for, username, uuid etc.
+
 [ ] parse reply headers correctly
+
 [ ] look over optional headers, vs non-optional, and look over pub exposure
+
 [ ] add terminal highlighting whenever channel owner name is mentioned (prefixed by @)
