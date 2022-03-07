@@ -30,12 +30,19 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 - ~~add file logger, to be able to tail logs~~
 - ~~ability to include some context while logging~~
 - ~~ability to set log levels in logger~~
-- add `--debug` flag so we can read debug messages in chat, including broken chat messages
 - ~~Overhaul the logging, and add proper logging in the entire application.~~
-- implement a "padder" struct/function that will fill out with whitespaces.
+- ~~implement a "padder" struct/function that will fill out with whitespaces.~~
 - ~~implement `Drop` for `EventHandler`~~
+- add `--debug` flag so we can read debug messages in chat, including broken chat messages
 - identify smileys and replace with unicode
-- fix parsing of twitch reply chat messages
 - add unicode stuff for moderators
 - some day solve consistent name color (twitch not sending default colors)
 - remember to never implement log rotation
+
+### Parser todos:
+[ ] move metadata to own file
+[ ] divide metadata up into several structs, user, badges etc.
+[ ] write more specific char parsers for, username, uuid etc.
+[ ] parse reply headers correctly
+[ ] look over optional headers, vs non-optional, and look over pub exposure
+[ ] add terminal highlighting whenever channel owner name is mentioned (prefixed by @)
