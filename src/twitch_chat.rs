@@ -1,7 +1,6 @@
 use std::{any::type_name, io::stdout};
 
 use crate::{
-    chat_message::ChatMessage,
     gui::{
         chat_widget::ChatWidget,
         event_handler::{Action, EventHandler},
@@ -10,9 +9,10 @@ use crate::{
         Pos, Size,
     },
     log::get_logger,
+    parser::chat_message::ChatMessage,
     twitch_client::TwitchClient,
 };
-use chrono::Local;
+
 use crossbeam::select;
 use crossterm::{
     execute,
@@ -64,15 +64,21 @@ impl TwitchChat {
                 recv(client.receiver) -> chat_event => {
                     if let Ok(chat_event) = chat_event {
                         if let Message::Text(message) = chat_event {
-                            if let Ok(message) = ChatMessage::parse(&message) {
-                                chat.print(&mut screen, message);
-                            } else if !message.starts_with('@') {
-                                log.error(message.trim(), type_name::<TwitchChat>());
-                                let _message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
-                                // chat.print(&mut screen, message);
-                            } else {
-                                log.debug(&message, type_name::<TwitchChat>());
+
+                            match ChatMessage::parse(&message) {
+                                Ok(message) => chat.print(&mut screen, message),
+                                Err(message) => log.error(format!("{:#?}", message), type_name::<TwitchChat>()),
                             }
+
+                            // if let Ok(message) = ChatMessage::parse(&message) {
+                            //     chat.print(&mut screen, message);
+                            // } else if !message.starts_with('@') {
+                            //     log.error(message.trim(), type_name::<TwitchChat>());
+                            //     let _message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
+                            //     // chat.print(&mut screen, message);
+                            // } else {
+                            //     log.debug(&message, type_name::<TwitchChat>());
+                            // }
                         }
                         screen.render().unwrap();
                     }

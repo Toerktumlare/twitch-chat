@@ -3,7 +3,9 @@ use std::{any::type_name, io::Write};
 use chrono::Local;
 use crossterm::style::Color;
 
-use crate::{chat_message::ChatMessage, color_gen, log::get_logger, string_padder::StringPadder};
+use crate::{
+    color_gen, log::get_logger, parser::chat_message::ChatMessage, string_padder::StringPadder,
+};
 
 use super::{buffer::Style, screen::Screen, window::Window, Pos, Size};
 

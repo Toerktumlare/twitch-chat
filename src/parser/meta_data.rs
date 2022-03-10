@@ -1,62 +1,136 @@
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     branch::alt,
-    bytes::complete::tag,
-    character::complete::{alpha1, alphanumeric0, alphanumeric1, digit1, multispace0, one_of},
-    combinator::{opt, rest},
-    error::{context, ErrorKind, VerboseError},
+    bytes::complete::{tag, take_till},
+    character::complete::{alphanumeric0, alphanumeric1, digit1, one_of},
+    combinator::opt,
+    error::{context, ErrorKind, ParseError, VerboseError},
     multi::{many1, separated_list0},
     sequence::{preceded, separated_pair, tuple},
     AsChar, IResult, InputTakeAtPosition,
 };
 
-#[derive(Debug, PartialEq, Eq)]
-enum MessageType {
-    PrivMsg,
-}
-
-impl From<&str> for MessageType {
-    fn from(i: &str) -> Self {
-        match i.to_lowercase().as_str() {
-            "privmsg" => MessageType::PrivMsg,
-            _ => unimplemented!("wuut?"),
-        }
-    }
-}
+use super::{Badges, Emote};
 
 #[derive(Debug, PartialEq, Eq)]
-enum Badges {
-    Admin,
-    Bits,
-    Broadcaster,
-    GlobalMod,
-    Moderator,
-    Subscriber,
-    Staff,
-    Turbo,
-    Premium,
-    GlitchCon2020,
-    SubGifter,
-    Unimplemented,
+pub struct MetaData<'a> {
+    badge_info: Vec<(Badges, &'a str)>,
+    badges: Vec<(Badges, &'a str)>,
+    client_nonce: Option<&'a str>,
+    bits: Option<u32>,
+    pub color: Option<Option<(u8, u8, u8)>>,
+    pub display_name: Option<&'a str>,
+    emote_only: Option<bool>,
+    emotes: Vec<Emote<'a>>,
+    first_msg: bool,
+    flags: Option<Option<&'a str>>,
+    id: &'a str,
+    moderator: bool,
+    reply_parent_display_name: Option<&'a str>,
+    reply_parent_msg_body: Option<&'a str>,
+    reply_parent_msg_id: Option<&'a str>,
+    reply_parent_user_id: Option<u32>,
+    reply_parent_user_login: Option<&'a str>,
+    room_id: u32,
+    subscriber: bool,
+    pub tmi_sent_ts: DateTime<Utc>,
+    turbo: bool,
+    user_id: u32,
+    user_type: Option<&'a str>,
 }
 
-impl From<&str> for Badges {
-    fn from(i: &str) -> Self {
-        match i.to_lowercase().as_str() {
-            "admin" => Badges::Admin,
-            "bits" => Badges::Bits,
-            "broadcaster" => Badges::Broadcaster,
-            "global_mod" => Badges::GlobalMod,
-            "moderator" => Badges::Moderator,
-            "subscriber" => Badges::Subscriber,
-            "staff" => Badges::Staff,
-            "turbo" => Badges::Turbo,
-            "premium" => Badges::Premium,
-            "glitchcon2020" => Badges::GlitchCon2020,
-            "sub-gifter" => Badges::SubGifter,
-            _ => Badges::Unimplemented,
-        }
-    }
+pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
+    context(
+        "MetaData",
+        tuple((
+            badge_info,
+            badges,
+            opt(client_nonce),
+            opt(bits),
+            opt(color),
+            display_name,
+            opt(emote_only),
+            emotes,
+            first_msg,
+            opt(flags),
+            id,
+            moderator,
+            tuple((
+                opt(reply_parent_display_name),
+                opt(reply_parent_msg_body),
+                opt(reply_parent_msg_id),
+                opt(reply_parent_user_id),
+                opt(reply_parent_user_login),
+            )),
+            room_id,
+            subscriber,
+            tmi_sent_ts,
+            turbo,
+            user_id,
+            opt(user_type),
+        )),
+    )(input)
+    .map(
+        |(
+            next,
+            (
+                badge_info,
+                badges,
+                client_nonce,
+                bits,
+                color,
+                display_name,
+                emote_only,
+                emotes,
+                first_msg,
+                flags,
+                id,
+                moderator,
+                (
+                    reply_parent_display_name,
+                    reply_parent_msg_body,
+                    reply_parent_msg_id,
+                    reply_parent_user_id,
+                    reply_parent_user_login,
+                ),
+                room_id,
+                subscriber,
+                tmi_sent_ts,
+                turbo,
+                user_id,
+                user_type,
+            ),
+        )| {
+            (
+                next,
+                MetaData {
+                    badge_info,
+                    badges,
+                    client_nonce,
+                    bits,
+                    color,
+                    display_name,
+                    emote_only,
+                    emotes,
+                    first_msg,
+                    flags,
+                    id,
+                    moderator,
+                    reply_parent_display_name,
+                    reply_parent_msg_body,
+                    reply_parent_msg_id,
+                    reply_parent_user_id,
+                    reply_parent_user_login,
+                    room_id,
+                    subscriber,
+                    tmi_sent_ts,
+                    turbo,
+                    user_id,
+                    user_type,
+                },
+            )
+        },
+    )
 }
 
 type Res<T, U> = IResult<T, U, VerboseError<T>>;
@@ -75,6 +149,19 @@ where
     )
 }
 
+fn username<T>(i: T) -> Res<T, T>
+where
+    T: InputTakeAtPosition,
+    <T as InputTakeAtPosition>::Item: AsChar,
+{
+    i.split_at_position1_complete(
+        |item| {
+            let char_item = item.as_char();
+            char_item != '_' && !char_item.is_alphanum()
+        },
+        ErrorKind::AlphaNumeric,
+    )
+}
 fn alphanumerichyphenbackslash1<T>(i: T) -> Res<T, T>
 where
     T: InputTakeAtPosition,
@@ -84,20 +171,6 @@ where
         |item| {
             let char_item = item.as_char();
             char_item != '-' && char_item != '_' && char_item != '\\' && !char_item.is_alphanum()
-        },
-        ErrorKind::AlphaNumeric,
-    )
-}
-
-fn alphanumerichyphencolon1<T>(i: T) -> Res<T, T>
-where
-    T: InputTakeAtPosition,
-    <T as InputTakeAtPosition>::Item: AsChar,
-{
-    i.split_at_position1_complete(
-        |item| {
-            let char_item = item.as_char();
-            char_item != '-' && char_item != ':' && char_item != '.' && !char_item.is_alphanum()
         },
         ErrorKind::AlphaNumeric,
     )
@@ -117,6 +190,7 @@ fn badge_info(input: &str) -> Res<&str, Vec<(Badges, &str)>> {
     )(input)
     .map(|(next, (_, value))| (next, value))
 }
+
 fn badges(input: &str) -> Res<&str, Vec<(Badges, &str)>> {
     context(
         "badges",
@@ -182,109 +256,10 @@ fn display_name(input: &str) -> Res<&str, Option<&str>> {
         "display-name",
         preceded(
             tag(";"),
-            separated_pair(tag("display-name"), tag("="), opt(alphanumerichyphen1)),
+            separated_pair(tag("display-name"), tag("="), opt(username)),
         ),
     )(input)
     .map(|(next, (_, value))| (next, value))
-}
-
-fn emote_indexes(input: &str) -> Res<&str, Vec<(u32, u32)>> {
-    context(
-        "emote indexes",
-        separated_list0(tag(","), separated_pair(digit1, tag("-"), digit1)),
-    )(input)
-    .map(|(next, result)| {
-        let result = result
-            .iter()
-            .map(|(v1, v2)| (v1.parse::<u32>().unwrap(), v2.parse::<u32>().unwrap()))
-            .collect::<Vec<(u32, u32)>>();
-        (next, result)
-    })
-}
-
-fn single_emote(input: &str) -> Res<&str, Emote> {
-    context(
-        "emote",
-        separated_pair(alphanumerichyphen1, tag(":"), emote_indexes),
-    )(input)
-    .map(|(next, (id, indexes))| (next, Emote { id, indexes }))
-}
-
-fn emotes(input: &str) -> Res<&str, Vec<Emote>> {
-    context(
-        "emotes",
-        preceded(
-            tag(";"),
-            separated_pair(
-                tag("emotes"),
-                tag("="),
-                separated_list0(tag("/"), single_emote),
-            ),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
-}
-
-fn id(input: &str) -> Res<&str, &str> {
-    context(
-        "id",
-        preceded(
-            tag(";"),
-            separated_pair(tag("id"), tag("="), alphanumerichyphen1),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
-}
-
-fn moderator(input: &str) -> Res<&str, bool> {
-    context(
-        "mod",
-        preceded(tag(";"), separated_pair(tag("mod"), tag("="), digit1)),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
-}
-
-fn subscriber(input: &str) -> Res<&str, bool> {
-    context(
-        "subscriber",
-        preceded(
-            tag(";"),
-            separated_pair(tag("subscriber"), tag("="), digit1),
-        ),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
-}
-
-fn turbo(input: &str) -> Res<&str, bool> {
-    context(
-        "turbo",
-        preceded(tag(";"), separated_pair(tag("turbo"), tag("="), digit1)),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
-}
-
-fn first_msg(input: &str) -> Res<&str, bool> {
-    context(
-        "first-msg",
-        preceded(tag(";"), separated_pair(tag("first-msg"), tag("="), digit1)),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
 }
 
 fn emote_only(input: &str) -> Res<&str, bool> {
@@ -300,17 +275,6 @@ fn emote_only(input: &str) -> Res<&str, bool> {
         let value = value != 0;
         (next, value)
     })
-}
-
-fn flags(input: &str) -> Res<&str, Option<&str>> {
-    context(
-        "flags",
-        preceded(
-            tag(";"),
-            separated_pair(tag("flags"), tag("="), opt(alphanumerichyphencolon1)),
-        ),
-    )(input)
-    .map(|(next, (_, value))| (next, value))
 }
 
 fn client_nonce(input: &str) -> Res<&str, &str> {
@@ -367,14 +331,7 @@ fn user_type(input: &str) -> Res<&str, &str> {
     .map(|(next, (_, result))| (next, result))
 }
 
-fn prefix(input: &str) -> Res<&str, &str> {
-    context(
-        "prefix",
-        preceded(multispace0, preceded(tag(":"), prefix_chars)),
-    )(input)
-}
-
-fn prefix_chars<T>(i: T) -> Res<T, T>
+fn alphanumerichyphencolon1<T>(i: T) -> Res<T, T>
 where
     T: InputTakeAtPosition,
     <T as InputTakeAtPosition>::Item: AsChar,
@@ -382,173 +339,304 @@ where
     i.split_at_position1_complete(
         |item| {
             let char_item = item.as_char();
-            char_item != '_'
-                && char_item != '!'
-                && char_item != '@'
-                && char_item != '.'
-                && !char_item.is_alphanum()
+            char_item != '-' && char_item != ':' && char_item != '.' && !char_item.is_alphanum()
         },
         ErrorKind::AlphaNumeric,
     )
 }
 
-fn message_type(input: &str) -> Res<&str, MessageType> {
-    context("message-type", preceded(multispace0, alpha1))(input)
-        .map(|(next, value)| (next, value.into()))
-}
-
-fn destination(input: &str) -> Res<&str, &str> {
+fn flags(input: &str) -> Res<&str, Option<&str>> {
     context(
-        "destination",
-        preceded(multispace0, preceded(tag("#"), alpha1)),
+        "flags",
+        preceded(
+            tag(";"),
+            separated_pair(tag("flags"), tag("="), opt(alphanumerichyphencolon1)),
+        ),
     )(input)
+    .map(|(next, (_, value))| (next, value))
 }
 
-fn message(input: &str) -> Res<&str, &str> {
-    context("message", preceded(multispace0, preceded(tag(":"), rest)))(input)
-}
-
-fn meta_data(input: &str) -> Res<&str, MetaData> {
+fn moderator(input: &str) -> Res<&str, bool> {
     context(
-        "MetaData",
-        tuple((
-            badge_info,
-            badges,
-            opt(client_nonce),
-            opt(bits),
-            opt(color),
-            display_name,
-            opt(emote_only),
-            emotes,
-            first_msg,
-            opt(flags),
-            id,
-            moderator,
-            room_id,
-            subscriber,
-            tmi_sent_ts,
-            turbo,
-            user_id,
-            opt(user_type),
-        )),
+        "mod",
+        preceded(tag(";"), separated_pair(tag("mod"), tag("="), digit1)),
     )(input)
-    .map(
-        |(
-            next,
-            (
-                badge_info,
-                badges,
-                client_nonce,
-                bits,
-                color,
-                display_name,
-                emote_only,
-                emotes,
-                first_msg,
-                flags,
-                id,
-                moderator,
-                room_id,
-                subscriber,
-                tmi_sent_ts,
-                turbo,
-                user_id,
-                user_type,
+    .map(|(next, (_, value))| {
+        let value = value.parse::<u32>().unwrap();
+        let value = value != 0;
+        (next, value)
+    })
+}
+
+fn subscriber(input: &str) -> Res<&str, bool> {
+    context(
+        "subscriber",
+        preceded(
+            tag(";"),
+            separated_pair(tag("subscriber"), tag("="), digit1),
+        ),
+    )(input)
+    .map(|(next, (_, value))| {
+        let value = value.parse::<u32>().unwrap();
+        let value = value != 0;
+        (next, value)
+    })
+}
+
+fn turbo(input: &str) -> Res<&str, bool> {
+    context(
+        "turbo",
+        preceded(tag(";"), separated_pair(tag("turbo"), tag("="), digit1)),
+    )(input)
+    .map(|(next, (_, value))| {
+        let value = value.parse::<u32>().unwrap();
+        let value = value != 0;
+        (next, value)
+    })
+}
+
+fn first_msg(input: &str) -> Res<&str, bool> {
+    context(
+        "first-msg",
+        preceded(tag(";"), separated_pair(tag("first-msg"), tag("="), digit1)),
+    )(input)
+    .map(|(next, (_, value))| {
+        let value = value.parse::<u32>().unwrap();
+        let value = value != 0;
+        (next, value)
+    })
+}
+
+fn emotes(input: &str) -> Res<&str, Vec<Emote>> {
+    context(
+        "emotes",
+        preceded(
+            tag(";"),
+            separated_pair(
+                tag("emotes"),
+                tag("="),
+                separated_list0(tag("/"), single_emote),
             ),
-        )| {
-            (
-                next,
-                MetaData {
-                    badge_info,
-                    badges,
-                    client_nonce,
-                    bits,
-                    color,
-                    display_name,
-                    emote_only,
-                    emotes,
-                    first_msg,
-                    flags,
-                    id,
-                    moderator,
-                    room_id,
-                    subscriber,
-                    tmi_sent_ts,
-                    turbo,
-                    user_id,
-                    user_type,
-                },
-            )
-        },
-    )
+        ),
+    )(input)
+    .map(|(next, (_, result))| (next, result))
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Emote<'a> {
-    id: &'a str,
-    indexes: Vec<(u32, u32)>,
+fn single_emote(input: &str) -> Res<&str, Emote> {
+    context(
+        "emote",
+        separated_pair(alphanumerichyphen1, tag(":"), emote_indexes),
+    )(input)
+    .map(|(next, (id, indexes))| (next, Emote { id, indexes }))
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct MetaData<'a> {
-    badge_info: Vec<(Badges, &'a str)>,
-    badges: Vec<(Badges, &'a str)>,
-    client_nonce: Option<&'a str>,
-    bits: Option<u32>,
-    pub color: Option<Option<(u8, u8, u8)>>,
-    pub display_name: Option<&'a str>,
-    emote_only: Option<bool>,
-    emotes: Vec<Emote<'a>>,
-    first_msg: bool,
-    flags: Option<Option<&'a str>>,
-    id: &'a str,
-    moderator: bool,
-    room_id: u32,
-    subscriber: bool,
-    pub tmi_sent_ts: DateTime<Utc>,
-    turbo: bool,
-    user_id: u32,
-    user_type: Option<&'a str>,
+fn emote_indexes(input: &str) -> Res<&str, Vec<(u32, u32)>> {
+    context(
+        "emote indexes",
+        separated_list0(tag(","), separated_pair(digit1, tag("-"), digit1)),
+    )(input)
+    .map(|(next, result)| {
+        let result = result
+            .iter()
+            .map(|(v1, v2)| (v1.parse::<u32>().unwrap(), v2.parse::<u32>().unwrap()))
+            .collect::<Vec<(u32, u32)>>();
+        (next, result)
+    })
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct ChatMessage<'a> {
-    pub meta_data: MetaData<'a>,
-    prefix: &'a str,
-    message_type: MessageType,
-    destination: &'a str,
-    pub message: &'a str,
+fn id(input: &str) -> Res<&str, &str> {
+    context(
+        "id",
+        preceded(
+            tag(";"),
+            separated_pair(tag("id"), tag("="), alphanumerichyphen1),
+        ),
+    )(input)
+    .map(|(next, (_, result))| (next, result))
 }
 
-impl<'a> ChatMessage<'a> {
-    pub fn parse(input: &str) -> Result<ChatMessage, nom::Err<VerboseError<&str>>> {
-        let (next, meta_data) = meta_data(input)?;
-        let (next, prefix) = prefix(next)?;
-        let (next, message_type) = message_type(next)?;
-        let (next, destination) = destination(next)?;
-        let (_, message) = message(next)?;
-        Ok(ChatMessage {
-            message_type,
-            meta_data,
-            prefix,
-            destination,
-            message,
-        })
-    }
+fn reply_parent_display_name(input: &str) -> Res<&str, &str> {
+    context(
+        "reply_parent_display_name",
+        preceded(
+            tag(";"),
+            separated_pair(tag("reply-parent-display-name"), tag("="), username),
+        ),
+    )(input)
+    .map(|(next, (_, result))| (next, result))
 }
 
+fn reply_parent_msg_body(input: &str) -> Res<&str, &str> {
+    context(
+        "reply_parent_display_name",
+        preceded(
+            tag(";"),
+            separated_pair(tag("reply-parent-msg-body"), tag("="), parse_msg_body),
+        ),
+    )(input)
+    .map(|(next, (_, result))| (next, result))
+}
+
+fn parse_msg_body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+    take_till(|c| c == ';')(i)
+}
+
+fn reply_parent_msg_id(input: &str) -> Res<&str, &str> {
+    context(
+        "reply_parent_msg_id",
+        preceded(
+            tag(";"),
+            separated_pair(tag("reply-parent-msg-id"), tag("="), alphanumerichyphen1),
+        ),
+    )(input)
+    .map(|(next, (_, result))| (next, result))
+}
+fn reply_parent_user_id(input: &str) -> Res<&str, u32> {
+    context(
+        "reply_parent_display_name",
+        preceded(
+            tag(";"),
+            separated_pair(tag("reply-parent-user-id"), tag("="), digit1),
+        ),
+    )(input)
+    .map(|(next, (_, result))| (next, result.parse::<u32>().unwrap()))
+}
+fn reply_parent_user_login(input: &str) -> Res<&str, &str> {
+    context(
+        "reply_parent_display_name",
+        preceded(
+            tag(";"),
+            separated_pair(tag("reply-parent-user-login"), tag("="), username),
+        ),
+    )(input)
+    .map(|(next, (_, result))| (next, result))
+}
 #[cfg(test)]
 mod test {
+
     use super::*;
     use nom::error::VerboseErrorKind;
     use nom::Err as NomErr;
 
+    // @badge-info=;
+    // badges=;
+    // client-nonce=fd58b3d4628840dc10378c532c344ff8;
+    // color=;
+    // display-name=leprajon;
+    // emotes=;
+    // first-msg=0;
+    // flags=;
+    // id=d238119b-ebe3-41a7-b177-55d145402d0b;
+    // mod=0;
+    // reply-parent-display-name=Toerktumlare;
+    // reply-parent-msg-body=hello\schat!;
+    // reply-parent-msg-id=9bf7210b-e249-4d32-a240-fc0a6bb762a8;
+    // reply-parent-user-id=47496925;
+    // reply-parent-user-login=toerktumlare;
+    // room-id=47496925;
+    // subscriber=0;
+    // tmi-sent-ts=1646864986812;
+    // turbo=0;
+    // user-id=149182416;
+    // user-type=
+    // :leprajon!leprajon@leprajon.tmi.twitch.tv PRIVMSG #toerktumlare :@Toerktumlare asd
+    //
+    //
+    //
+    // badge_info: Vec<(Badges, &'a str)>,
+    // badges: Vec<(Badges, &'a str)>,
+    // client_nonce: Option<&'a str>,
+    // bits: Option<u32>,
+    // pub color: Option<Option<(u8, u8, u8)>>,
+    // pub display_name: Option<&'a str>,
+    // emote_only: Option<bool>,
+    // emotes: Vec<Emote<'a>>,
+    // first_msg: bool,
+    // flags: Option<Option<&'a str>>,
+    // id: &'a str,
+    // moderator: bool,
+    // reply_parent_display_name: Option<&'a str>,
+    // reply_parent_msg_body: Option<&'a str>,
+    // reply_parent_msg_id: Option<&'a str>,
+    // reply_parent_user_id: Option<u32>,
+    // reply_parent_user_login: Option<&'a str>,
+    // room_id: u32,
+    // subscriber: bool,
+    // pub tmi_sent_ts: DateTime<Utc>,
+    // turbo: bool,
+    // user_id: u32,
+    // user_type: Option<&'a str>,
+
     #[test]
-    fn test_prefix() {
+    fn parse_reply_message_meta_data() {
+        let meta_data_string = "@badge-info=;badges=;client-nonce=abc123;color=#FFFFFF;display-name=kirglow;emotes=;first-msg=0;flags=;id=2f-7e;mod=0;reply-parent-display-name=Toerktumlare;reply-parent-msg-body=take\\s2;reply-parent-msg-id=87-f3;reply-parent-user-id=4749;reply-parent-user-login=toerktumlare;room-id=4749;subscriber=0;tmi-sent-ts=1500000000;turbo=0;user-id=60;user-type=";
+        let meta_data = MetaData {
+            badge_info: vec![],
+            badges: vec![],
+            client_nonce: Some("abc123"),
+            bits: None,
+            color: Some(Some((255, 255, 255))),
+            display_name: Some("kirglow"),
+            emote_only: None,
+            emotes: vec![],
+            first_msg: false,
+            flags: Some(None),
+            id: "2f-7e",
+            moderator: false,
+            reply_parent_display_name: Some("Toerktumlare"),
+            reply_parent_msg_body: Some("take\\s2"),
+            reply_parent_msg_id: Some("87-f3"),
+            reply_parent_user_id: Some(4749),
+            reply_parent_user_login: Some("toerktumlare"),
+            room_id: 4749,
+            subscriber: false,
+            tmi_sent_ts: Utc.timestamp(1500000000, 0),
+            turbo: false,
+            user_id: 60,
+            user_type: Some(""),
+        };
+
+        assert_eq!(new_meta_data(meta_data_string), Ok(("", meta_data)));
+    }
+
+    #[test]
+    fn test_reply_parent_display_name() {
         assert_eq!(
-            prefix(" :toerktumlare!toerktumlare@toerktumlare.tmi.twitch.tv"),
-            Ok(("", "toerktumlare!toerktumlare@toerktumlare.tmi.twitch.tv"))
-        )
+            reply_parent_display_name(";reply-parent-display-name=Toerktumlare"),
+            Ok(("", "Toerktumlare"))
+        );
+    }
+
+    #[test]
+    fn test_reply_parent_msg_body() {
+        assert_eq!(
+            reply_parent_msg_body(";reply-parent-msg-body=hello\\schat!"),
+            Ok(("", "hello\\schat!"))
+        );
+    }
+
+    #[test]
+    fn test_reply_parent_msg_id() {
+        assert_eq!(
+            reply_parent_msg_body(";reply-parent-msg-id=9bf7210b-e249-4d32-a240-fc0a6bb762a8"),
+            Ok(("", "9bf7210b-e249-4d32-a240-fc0a6bb762a8"))
+        );
+    }
+
+    #[test]
+    fn test_reply_parent_user_id() {
+        assert_eq!(
+            reply_parent_msg_body(";reply-parent-user-id=47496925"),
+            Ok(("", "47496925"))
+        );
+    }
+
+    #[test]
+    fn test_reply_parent_user_login() {
+        assert_eq!(
+            reply_parent_msg_body(";reply-parent-user-login=toerktumlare"),
+            Ok(("", "toerktumlare"))
+        );
     }
 
     #[test]
@@ -826,11 +914,6 @@ mod test {
             tmi_sent_ts(";tmi-sent-ts=1500000000"),
             Ok(("", Utc.timestamp(1500000000, 0)))
         )
-    }
-
-    #[test]
-    fn should_give_correct_enum() {
-        assert_eq!(MessageType::from("PRIVMSG"), MessageType::PrivMsg);
     }
 
     #[test]

@@ -3,10 +3,10 @@ use std::{env, process::exit};
 use twitch_chat::TwitchChat;
 
 mod arg_parser;
-mod chat_message;
 mod color_gen;
 mod gui;
 mod log;
+mod parser;
 mod string_padder;
 mod twitch_chat;
 mod twitch_client;

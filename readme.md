@@ -36,17 +36,21 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 - add `--debug` flag so we can read debug messages in chat, including broken chat messages
 - identify smileys and replace with unicode
 - add unicode stuff for moderators
+- add subscriber unicode char
 - some day solve consistent name color (twitch not sending default colors)
+- someday look into using viuer
+- highlight first message in chat
+- highlight reply messages to chat owner
 - remember to never implement log rotation
 
 ### Parser todos:
-[ ] move metadata to own file
+[x] move metadata to own file
 
 [ ] divide metadata up into several structs, user, badges etc.
 
-[ ] write more specific char parsers for, username, uuid etc.
+[/] write more specific char parsers for, username, uuid etc.
 
-[ ] parse reply headers correctly
+[x] parse reply headers correctly
 
 [ ] look over optional headers, vs non-optional, and look over pub exposure
 
