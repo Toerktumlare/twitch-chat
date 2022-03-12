@@ -1,5 +1,6 @@
 pub mod chat_message;
 pub mod meta_data;
+pub mod tags;
 
 #[derive(Debug, PartialEq, Eq)]
 struct Emote<'a> {

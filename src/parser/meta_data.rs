@@ -1,3 +1,4 @@
+use super::tags;
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     branch::alt,
@@ -7,7 +8,7 @@ use nom::{
     error::{context, ErrorKind, ParseError, VerboseError},
     multi::{many1, separated_list0},
     sequence::{preceded, separated_pair, tuple},
-    AsChar, IResult, InputTakeAtPosition,
+    AsChar, IResult, InputTakeAtPosition, Parser,
 };
 
 use super::{Badges, Emote};
@@ -26,11 +27,7 @@ pub struct MetaData<'a> {
     flags: Option<Option<&'a str>>,
     id: &'a str,
     moderator: bool,
-    reply_parent_display_name: Option<&'a str>,
-    reply_parent_msg_body: Option<&'a str>,
-    reply_parent_msg_id: Option<&'a str>,
-    reply_parent_user_id: Option<u32>,
-    reply_parent_user_login: Option<&'a str>,
+    reply: Option<Reply<'a>>,
     room_id: u32,
     subscriber: bool,
     pub tmi_sent_ts: DateTime<Utc>,
@@ -56,11 +53,11 @@ pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
             id,
             moderator,
             tuple((
-                opt(reply_parent_display_name),
-                opt(reply_parent_msg_body),
-                opt(reply_parent_msg_id),
-                opt(reply_parent_user_id),
-                opt(reply_parent_user_login),
+                opt(sep_pair(tags::REPLY_PARENT_DISPLAY_NAME, username)),
+                opt(sep_pair(tags::REPLY_PARENT_MSG_BODY, parse_msg_body)),
+                opt(sep_pair(tags::REPLY_PARENT_MSG_ID, alphanumerichyphen1)),
+                opt(sep_pair(tags::REPLY_PARENT_USER_ID, digit1).map(|v| v.parse().unwrap())),
+                opt(sep_pair(tags::REPLY_PARENT_USER_LOGIN, username)),
             )),
             room_id,
             subscriber,
@@ -116,11 +113,13 @@ pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
                     flags,
                     id,
                     moderator,
-                    reply_parent_display_name,
-                    reply_parent_msg_body,
-                    reply_parent_msg_id,
-                    reply_parent_user_id,
-                    reply_parent_user_login,
+                    reply: Some(Reply {
+                        display_name: reply_parent_display_name,
+                        msg_body: reply_parent_msg_body,
+                        msg_id: reply_parent_msg_id,
+                        user_id: reply_parent_user_id,
+                        user_login: reply_parent_user_login,
+                    }),
                     room_id,
                     subscriber,
                     tmi_sent_ts,
@@ -131,6 +130,15 @@ pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
             )
         },
     )
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct Reply<'a> {
+    display_name: Option<&'a str>,
+    msg_body: Option<&'a str>,
+    msg_id: Option<&'a str>,
+    user_id: Option<u32>,
+    user_login: Option<&'a str>,
 }
 
 type Res<T, U> = IResult<T, U, VerboseError<T>>;
@@ -455,62 +463,23 @@ fn id(input: &str) -> Res<&str, &str> {
     .map(|(next, (_, result))| (next, result))
 }
 
-fn reply_parent_display_name(input: &str) -> Res<&str, &str> {
-    context(
-        "reply_parent_display_name",
-        preceded(
-            tag(";"),
-            separated_pair(tag("reply-parent-display-name"), tag("="), username),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
-}
-
-fn reply_parent_msg_body(input: &str) -> Res<&str, &str> {
-    context(
-        "reply_parent_display_name",
-        preceded(
-            tag(";"),
-            separated_pair(tag("reply-parent-msg-body"), tag("="), parse_msg_body),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
-}
-
 fn parse_msg_body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     take_till(|c| c == ';')(i)
 }
 
-fn reply_parent_msg_id(input: &str) -> Res<&str, &str> {
-    context(
-        "reply_parent_msg_id",
-        preceded(
-            tag(";"),
-            separated_pair(tag("reply-parent-msg-id"), tag("="), alphanumerichyphen1),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
+fn sep_pair<'a, T>(
+    param_string: &'static str,
+    p: impl Parser<&'a str, T, VerboseError<&'a str>> + Copy,
+) -> impl Parser<&'a str, T, VerboseError<&'a str>> {
+    move |input| {
+        context(
+            param_string,
+            preceded(tag(";"), separated_pair(tag(param_string), tag("="), p)),
+        )(input)
+        .map(|(next, (_, result))| (next, result))
+    }
 }
-fn reply_parent_user_id(input: &str) -> Res<&str, u32> {
-    context(
-        "reply_parent_display_name",
-        preceded(
-            tag(";"),
-            separated_pair(tag("reply-parent-user-id"), tag("="), digit1),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result.parse::<u32>().unwrap()))
-}
-fn reply_parent_user_login(input: &str) -> Res<&str, &str> {
-    context(
-        "reply_parent_display_name",
-        preceded(
-            tag(";"),
-            separated_pair(tag("reply-parent-user-login"), tag("="), username),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
-}
+
 #[cfg(test)]
 mod test {
 
@@ -583,11 +552,13 @@ mod test {
             flags: Some(None),
             id: "2f-7e",
             moderator: false,
-            reply_parent_display_name: Some("Toerktumlare"),
-            reply_parent_msg_body: Some("take\\s2"),
-            reply_parent_msg_id: Some("87-f3"),
-            reply_parent_user_id: Some(4749),
-            reply_parent_user_login: Some("toerktumlare"),
+            reply: Some(Reply {
+                display_name: Some("Toerktumlare"),
+                msg_body: Some("take\\s2"),
+                msg_id: Some("87-f3"),
+                user_id: Some(4749),
+                user_login: Some("toerktumlare"),
+            }),
             room_id: 4749,
             subscriber: false,
             tmi_sent_ts: Utc.timestamp(1500000000, 0),
@@ -602,7 +573,8 @@ mod test {
     #[test]
     fn test_reply_parent_display_name() {
         assert_eq!(
-            reply_parent_display_name(";reply-parent-display-name=Toerktumlare"),
+            sep_pair(tags::REPLY_PARENT_DISPLAY_NAME, username)
+                .parse(";reply-parent-display-name=Toerktumlare"),
             Ok(("", "Toerktumlare"))
         );
     }
@@ -610,7 +582,8 @@ mod test {
     #[test]
     fn test_reply_parent_msg_body() {
         assert_eq!(
-            reply_parent_msg_body(";reply-parent-msg-body=hello\\schat!"),
+            sep_pair(tags::REPLY_PARENT_MSG_BODY, parse_msg_body)
+                .parse(";reply-parent-msg-body=hello\\schat!"),
             Ok(("", "hello\\schat!"))
         );
     }
@@ -618,15 +591,16 @@ mod test {
     #[test]
     fn test_reply_parent_msg_id() {
         assert_eq!(
-            reply_parent_msg_body(";reply-parent-msg-id=9bf7210b-e249-4d32-a240-fc0a6bb762a8"),
-            Ok(("", "9bf7210b-e249-4d32-a240-fc0a6bb762a8"))
+            sep_pair(tags::REPLY_PARENT_MSG_ID, alphanumerichyphen1)
+                .parse(";reply-parent-msg-id=9bf7210b-e249-4d32-a240-fc0a6bb762a8h"),
+            Ok(("", "9bf7210b-e249-4d32-a240-fc0a6bb762a8h"))
         );
     }
 
     #[test]
     fn test_reply_parent_user_id() {
         assert_eq!(
-            reply_parent_msg_body(";reply-parent-user-id=47496925"),
+            sep_pair(tags::REPLY_PARENT_USER_ID, digit1).parse(";reply-parent-user-id=47496925"),
             Ok(("", "47496925"))
         );
     }
@@ -634,7 +608,8 @@ mod test {
     #[test]
     fn test_reply_parent_user_login() {
         assert_eq!(
-            reply_parent_msg_body(";reply-parent-user-login=toerktumlare"),
+            sep_pair(tags::REPLY_PARENT_USER_LOGIN, username)
+                .parse(";reply-parent-user-login=toerktumlare"),
             Ok(("", "toerktumlare"))
         );
     }
@@ -920,10 +895,6 @@ mod test {
     fn should_format_date() {
         assert_eq!(
             Utc.timestamp(1431648000, 0).to_string(),
-            "2015-05-15 00:00:00 UTC"
-        );
-        assert_eq!(
-            Utc.timestamp(1643578014, 567).to_string(),
             "2015-05-15 00:00:00 UTC"
         );
     }
