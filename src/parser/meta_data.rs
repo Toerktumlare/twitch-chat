@@ -15,25 +15,25 @@ use super::{Badges, Emote};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct MetaData<'a> {
-    badge_info: Vec<(Badges, &'a str)>,
-    badges: Vec<(Badges, &'a str)>,
-    client_nonce: Option<&'a str>,
-    bits: Option<u32>,
+    pub badge_info: Vec<(Badges, &'a str)>,
+    pub badges: Vec<(Badges, &'a str)>,
+    pub client_nonce: Option<&'a str>,
+    pub bits: Option<u32>,
     pub color: Option<Option<(u8, u8, u8)>>,
     pub display_name: Option<&'a str>,
-    emote_only: Option<bool>,
-    emotes: Vec<Emote<'a>>,
-    first_msg: bool,
-    flags: Option<Option<&'a str>>,
-    id: &'a str,
-    moderator: bool,
-    reply: Option<Reply<'a>>,
-    room_id: u32,
-    subscriber: bool,
+    pub emote_only: Option<bool>,
+    pub emotes: Vec<Emote<'a>>,
+    pub first_msg: bool,
+    pub flags: Option<Option<&'a str>>,
+    pub id: &'a str,
+    pub moderator: bool,
+    pub reply: Option<Reply<'a>>,
+    pub room_id: u32,
+    pub subscriber: bool,
     pub tmi_sent_ts: DateTime<Utc>,
-    turbo: bool,
-    user_id: u32,
-    user_type: Option<&'a str>,
+    pub turbo: bool,
+    pub user_id: u32,
+    pub user_type: Option<&'a str>,
 }
 
 pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
@@ -133,7 +133,7 @@ pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-struct Reply<'a> {
+pub struct Reply<'a> {
     display_name: Option<&'a str>,
     msg_body: Option<&'a str>,
     msg_id: Option<&'a str>,
@@ -186,11 +186,11 @@ where
 
 fn badge_info(input: &str) -> Res<&str, Vec<(Badges, &str)>> {
     context(
-        "badge_info",
+        tags::BADGE_INFO,
         preceded(
             opt(alt((tag("@"), tag(";")))),
             separated_pair(
-                tag("badge-info"),
+                tag(tags::BADGE_INFO),
                 tag("="),
                 separated_list0(tag(","), badge_format),
             ),
@@ -201,11 +201,11 @@ fn badge_info(input: &str) -> Res<&str, Vec<(Badges, &str)>> {
 
 fn badges(input: &str) -> Res<&str, Vec<(Badges, &str)>> {
     context(
-        "badges",
+        tags::BADGES,
         preceded(
             opt(alt((tag("@"), tag(";")))),
             separated_pair(
-                tag("badges"),
+                tag(tags::BADGES),
                 tag("="),
                 separated_list0(tag(","), badge_format),
             ),
@@ -216,7 +216,7 @@ fn badges(input: &str) -> Res<&str, Vec<(Badges, &str)>> {
 
 fn badge_format(input: &str) -> Res<&str, (Badges, &str)> {
     context(
-        "badge_format",
+        tags::BADGE_FORMAT,
         separated_pair(alphanumerichyphen1, tag("/"), alphanumerichyphenbackslash1),
     )(input)
     .map(|(next, (badge, version))| (next, (badge.into(), version)))
@@ -224,10 +224,10 @@ fn badge_format(input: &str) -> Res<&str, (Badges, &str)> {
 
 fn color(input: &str) -> Res<&str, Option<(u8, u8, u8)>> {
     context(
-        "color",
+        tags::COLOR,
         preceded(
             alt((tag("@"), tag(";"))),
-            separated_pair(tag("color"), tag("="), opt(hex_to_rgb)),
+            separated_pair(tag(tags::COLOR), tag("="), opt(hex_to_rgb)),
         ),
     )(input)
     .map(|(next, (_, value))| (next, value))
@@ -252,62 +252,50 @@ fn hex_to_rgb(input: &str) -> Res<&str, (u8, u8, u8)> {
 }
 
 fn bits(input: &str) -> Res<&str, u32> {
-    context(
-        "bits",
-        preceded(tag("bits"), separated_pair(tag("bits"), tag("="), digit1)),
-    )(input)
-    .map(|(next, (_, value))| (next, value.parse::<u32>().unwrap()))
+    sep_pair(tags::BITS, digit1)
+        .parse(input)
+        .map(|(next, value)| (next, value.parse::<u32>().unwrap()))
 }
 
 fn display_name(input: &str) -> Res<&str, Option<&str>> {
     context(
-        "display-name",
+        tags::DISPLAY_NAME,
         preceded(
             tag(";"),
-            separated_pair(tag("display-name"), tag("="), opt(username)),
+            separated_pair(tag(tags::DISPLAY_NAME), tag("="), opt(username)),
         ),
     )(input)
     .map(|(next, (_, value))| (next, value))
 }
 
 fn emote_only(input: &str) -> Res<&str, bool> {
-    context(
-        "emote_only",
-        preceded(
-            tag(";"),
-            separated_pair(tag("emote-only"), tag("="), digit1),
-        ),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
+    sep_pair_to_bool(tags::EMOTE_ONLY, digit1).parse(input)
 }
 
 fn client_nonce(input: &str) -> Res<&str, &str> {
-    context(
-        "client-nonce",
-        preceded(
-            tag(";"),
-            separated_pair(tag("client-nonce"), tag("="), alphanumeric1),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
+    sep_pair(tags::CLIENT_NONCE, alphanumeric1)
+        .parse(input)
+        .map(|(next, result)| (next, result))
 }
 
 fn room_id(input: &str) -> Res<&str, u32> {
     context(
-        "room-id",
-        preceded(tag(";"), separated_pair(tag("room-id"), tag("="), digit1)),
+        tags::ROOM_ID,
+        preceded(
+            tag(";"),
+            separated_pair(tag(tags::ROOM_ID), tag("="), digit1),
+        ),
     )(input)
     .map(|(next, (_, result))| (next, result.parse::<u32>().unwrap()))
 }
 
 fn user_id(input: &str) -> Res<&str, u32> {
     context(
-        "user-id",
-        preceded(tag(";"), separated_pair(tag("user-id"), tag("="), digit1)),
+        tags::USER_ID,
+        preceded(
+            tag(";"),
+            separated_pair(tag(tags::USER_ID), tag("="), digit1),
+        ),
     )(input)
     .map(|(next, (_, result))| (next, result.parse::<u32>().unwrap()))
 }
@@ -329,14 +317,7 @@ fn tmi_sent_ts(input: &str) -> Res<&str, DateTime<Utc>> {
 }
 
 fn user_type(input: &str) -> Res<&str, &str> {
-    context(
-        "user-type",
-        preceded(
-            tag(";"),
-            separated_pair(tag("user-type"), tag("="), alphanumeric0),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
+    sep_pair(tags::USER_TYPE, alphanumeric0).parse(input)
 }
 
 fn alphanumerichyphencolon1<T>(i: T) -> Res<T, T>
@@ -355,73 +336,38 @@ where
 
 fn flags(input: &str) -> Res<&str, Option<&str>> {
     context(
-        "flags",
+        tags::FLAGS,
         preceded(
             tag(";"),
-            separated_pair(tag("flags"), tag("="), opt(alphanumerichyphencolon1)),
+            separated_pair(tag(tags::FLAGS), tag("="), opt(alphanumerichyphencolon1)),
         ),
     )(input)
     .map(|(next, (_, value))| (next, value))
 }
 
 fn moderator(input: &str) -> Res<&str, bool> {
-    context(
-        "mod",
-        preceded(tag(";"), separated_pair(tag("mod"), tag("="), digit1)),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
+    sep_pair_to_bool(tags::MODERATOR, digit1).parse(input)
 }
 
 fn subscriber(input: &str) -> Res<&str, bool> {
-    context(
-        "subscriber",
-        preceded(
-            tag(";"),
-            separated_pair(tag("subscriber"), tag("="), digit1),
-        ),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
+    sep_pair_to_bool(tags::SUBSCRIBER, digit1).parse(input)
 }
 
 fn turbo(input: &str) -> Res<&str, bool> {
-    context(
-        "turbo",
-        preceded(tag(";"), separated_pair(tag("turbo"), tag("="), digit1)),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
+    sep_pair_to_bool(tags::TURBO, digit1).parse(input)
 }
 
 fn first_msg(input: &str) -> Res<&str, bool> {
-    context(
-        "first-msg",
-        preceded(tag(";"), separated_pair(tag("first-msg"), tag("="), digit1)),
-    )(input)
-    .map(|(next, (_, value))| {
-        let value = value.parse::<u32>().unwrap();
-        let value = value != 0;
-        (next, value)
-    })
+    sep_pair_to_bool(tags::FIRST_MSG, digit1).parse(input)
 }
 
 fn emotes(input: &str) -> Res<&str, Vec<Emote>> {
     context(
-        "emotes",
+        tags::EMOTES,
         preceded(
             tag(";"),
             separated_pair(
-                tag("emotes"),
+                tag(tags::EMOTES),
                 tag("="),
                 separated_list0(tag("/"), single_emote),
             ),
@@ -432,7 +378,7 @@ fn emotes(input: &str) -> Res<&str, Vec<Emote>> {
 
 fn single_emote(input: &str) -> Res<&str, Emote> {
     context(
-        "emote",
+        tags::EMOTE,
         separated_pair(alphanumerichyphen1, tag(":"), emote_indexes),
     )(input)
     .map(|(next, (id, indexes))| (next, Emote { id, indexes }))
@@ -440,7 +386,7 @@ fn single_emote(input: &str) -> Res<&str, Emote> {
 
 fn emote_indexes(input: &str) -> Res<&str, Vec<(u32, u32)>> {
     context(
-        "emote indexes",
+        tags::EMOTE_INDEXES,
         separated_list0(tag(","), separated_pair(digit1, tag("-"), digit1)),
     )(input)
     .map(|(next, result)| {
@@ -453,14 +399,7 @@ fn emote_indexes(input: &str) -> Res<&str, Vec<(u32, u32)>> {
 }
 
 fn id(input: &str) -> Res<&str, &str> {
-    context(
-        "id",
-        preceded(
-            tag(";"),
-            separated_pair(tag("id"), tag("="), alphanumerichyphen1),
-        ),
-    )(input)
-    .map(|(next, (_, result))| (next, result))
+    sep_pair(tags::ID, alphanumerichyphen1).parse(input)
 }
 
 fn parse_msg_body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -477,6 +416,23 @@ fn sep_pair<'a, T>(
             preceded(tag(";"), separated_pair(tag(param_string), tag("="), p)),
         )(input)
         .map(|(next, (_, result))| (next, result))
+    }
+}
+
+fn sep_pair_to_bool<'a>(
+    param_string: &'static str,
+    p: impl Parser<&'a str, &'a str, VerboseError<&'a str>> + Copy,
+) -> impl Parser<&'a str, bool, VerboseError<&'a str>> {
+    move |input| {
+        context(
+            param_string,
+            preceded(tag(";"), separated_pair(tag(param_string), tag("="), p)),
+        )(input)
+        .map(|(next, (_, value))| {
+            let value = value.parse::<u32>().unwrap();
+            let value = value != 0;
+            (next, value)
+        })
     }
 }
 
@@ -567,7 +523,7 @@ mod test {
             user_type: Some(""),
         };
 
-        assert_eq!(new_meta_data(meta_data_string), Ok(("", meta_data)));
+        assert_eq!(dbg!(new_meta_data(meta_data_string)), Ok(("", meta_data)));
     }
 
     #[test]
@@ -637,7 +593,7 @@ mod test {
             Err(NomErr::Error(VerboseError {
                 errors: vec![
                     ("#1", VerboseErrorKind::Nom(ErrorKind::Tag)),
-                    ("admin#1", VerboseErrorKind::Context("badge_format"))
+                    ("admin#1", VerboseErrorKind::Context("badge-format"))
                 ]
             }))
         );

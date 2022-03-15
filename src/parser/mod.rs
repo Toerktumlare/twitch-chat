@@ -3,13 +3,13 @@ pub mod meta_data;
 pub mod tags;
 
 #[derive(Debug, PartialEq, Eq)]
-struct Emote<'a> {
+pub struct Emote<'a> {
     id: &'a str,
     indexes: Vec<(u32, u32)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum Badges {
+pub enum Badges {
     Admin,
     Bits,
     Broadcaster,
