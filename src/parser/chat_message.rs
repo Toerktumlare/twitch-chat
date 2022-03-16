@@ -7,10 +7,7 @@ use nom::{
     AsChar, IResult, InputTakeAtPosition,
 };
 
-use super::{
-    meta_data::{new_meta_data, MetaData},
-    MessageType,
-};
+use super::{meta_data::MetaData, MessageType};
 
 type Res<T, U> = IResult<T, U, VerboseError<T>>;
 
@@ -66,7 +63,7 @@ pub struct ChatMessage<'a> {
 
 impl<'a> ChatMessage<'a> {
     pub fn parse(input: &str) -> Result<ChatMessage, nom::Err<VerboseError<&str>>> {
-        let (next, meta_data) = new_meta_data(input)?;
+        let (next, meta_data) = MetaData::new(input)?;
         let (next, prefix) = prefix(next)?;
         let (next, message_type) = message_type(next)?;
         let (next, destination) = destination(next)?;

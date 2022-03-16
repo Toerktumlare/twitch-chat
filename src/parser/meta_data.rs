@@ -36,71 +36,42 @@ pub struct MetaData<'a> {
     pub user_type: Option<&'a str>,
 }
 
-pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
-    context(
-        "MetaData",
-        tuple((
-            badge_info,
-            badges,
-            opt(client_nonce),
-            opt(bits),
-            opt(color),
-            display_name,
-            opt(emote_only),
-            emotes,
-            first_msg,
-            opt(flags),
-            id,
-            moderator,
+impl<'a> MetaData<'a> {
+    pub fn new(input: &'a str) -> Res<&str, MetaData> {
+        context(
+            "MetaData",
             tuple((
-                opt(sep_pair(tags::REPLY_PARENT_DISPLAY_NAME, username)),
-                opt(sep_pair(tags::REPLY_PARENT_MSG_BODY, parse_msg_body)),
-                opt(sep_pair(tags::REPLY_PARENT_MSG_ID, alphanumerichyphen1)),
-                opt(sep_pair(tags::REPLY_PARENT_USER_ID, digit1).map(|v| v.parse().unwrap())),
-                opt(sep_pair(tags::REPLY_PARENT_USER_LOGIN, username)),
-            )),
-            room_id,
-            subscriber,
-            tmi_sent_ts,
-            turbo,
-            user_id,
-            opt(user_type),
-        )),
-    )(input)
-    .map(
-        |(
-            next,
-            (
                 badge_info,
                 badges,
-                client_nonce,
-                bits,
-                color,
+                opt(client_nonce),
+                opt(bits),
+                opt(color),
                 display_name,
-                emote_only,
+                opt(emote_only),
                 emotes,
                 first_msg,
-                flags,
+                opt(flags),
                 id,
                 moderator,
-                (
-                    reply_parent_display_name,
-                    reply_parent_msg_body,
-                    reply_parent_msg_id,
-                    reply_parent_user_id,
-                    reply_parent_user_login,
-                ),
+                tuple((
+                    opt(sep_pair(tags::REPLY_PARENT_DISPLAY_NAME, username)),
+                    opt(sep_pair(tags::REPLY_PARENT_MSG_BODY, parse_msg_body)),
+                    opt(sep_pair(tags::REPLY_PARENT_MSG_ID, alphanumerichyphen1)),
+                    opt(sep_pair(tags::REPLY_PARENT_USER_ID, digit1).map(|v| v.parse().unwrap())),
+                    opt(sep_pair(tags::REPLY_PARENT_USER_LOGIN, username)),
+                )),
                 room_id,
                 subscriber,
                 tmi_sent_ts,
                 turbo,
                 user_id,
-                user_type,
-            ),
-        )| {
-            (
+                opt(user_type),
+            )),
+        )(input)
+        .map(
+            |(
                 next,
-                MetaData {
+                (
                     badge_info,
                     badges,
                     client_nonce,
@@ -113,23 +84,54 @@ pub fn new_meta_data(input: &str) -> Res<&str, MetaData> {
                     flags,
                     id,
                     moderator,
-                    reply: Some(Reply {
-                        display_name: reply_parent_display_name,
-                        msg_body: reply_parent_msg_body,
-                        msg_id: reply_parent_msg_id,
-                        user_id: reply_parent_user_id,
-                        user_login: reply_parent_user_login,
-                    }),
+                    (
+                        reply_parent_display_name,
+                        reply_parent_msg_body,
+                        reply_parent_msg_id,
+                        reply_parent_user_id,
+                        reply_parent_user_login,
+                    ),
                     room_id,
                     subscriber,
                     tmi_sent_ts,
                     turbo,
                     user_id,
                     user_type,
-                },
-            )
-        },
-    )
+                ),
+            )| {
+                (
+                    next,
+                    MetaData {
+                        badge_info,
+                        badges,
+                        client_nonce,
+                        bits,
+                        color,
+                        display_name,
+                        emote_only,
+                        emotes,
+                        first_msg,
+                        flags,
+                        id,
+                        moderator,
+                        reply: Some(Reply {
+                            display_name: reply_parent_display_name,
+                            msg_body: reply_parent_msg_body,
+                            msg_id: reply_parent_msg_id,
+                            user_id: reply_parent_user_id,
+                            user_login: reply_parent_user_login,
+                        }),
+                        room_id,
+                        subscriber,
+                        tmi_sent_ts,
+                        turbo,
+                        user_id,
+                        user_type,
+                    },
+                )
+            },
+        )
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -523,7 +525,7 @@ mod test {
             user_type: Some(""),
         };
 
-        assert_eq!(dbg!(new_meta_data(meta_data_string)), Ok(("", meta_data)));
+        assert_eq!(MetaData::new(meta_data_string), Ok(("", meta_data)));
     }
 
     #[test]
