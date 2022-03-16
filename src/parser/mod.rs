@@ -8,7 +8,7 @@ pub struct Emote<'a> {
     indexes: Vec<(u32, u32)>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Badges {
     Admin,
     Bits,

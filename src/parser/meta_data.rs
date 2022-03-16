@@ -16,24 +16,19 @@ use super::{Badges, Emote};
 #[derive(Debug, PartialEq, Eq)]
 pub struct MetaData<'a> {
     pub badge_info: Vec<(Badges, &'a str)>,
-    pub badges: Vec<(Badges, &'a str)>,
     pub client_nonce: Option<&'a str>,
     pub bits: Option<u32>,
-    pub color: Option<Option<(u8, u8, u8)>>,
-    pub display_name: Option<&'a str>,
     pub emote_only: Option<bool>,
     pub emotes: Vec<Emote<'a>>,
     pub first_msg: bool,
     pub flags: Option<Option<&'a str>>,
     pub id: &'a str,
-    pub moderator: bool,
     pub reply: Reply<'a>,
     pub room_id: u32,
-    pub subscriber: bool,
     pub tmi_sent_ts: DateTime<Utc>,
-    pub turbo: bool,
     pub user_id: u32,
     pub user_type: Option<&'a str>,
+    pub user_info: UserInfo<'a>,
 }
 
 impl<'a> MetaData<'a> {
@@ -103,17 +98,13 @@ impl<'a> MetaData<'a> {
                     next,
                     MetaData {
                         badge_info,
-                        badges,
                         client_nonce,
                         bits,
-                        color,
-                        display_name,
                         emote_only,
                         emotes,
                         first_msg,
                         flags,
                         id,
-                        moderator,
                         reply: Reply {
                             display_name: reply_parent_display_name,
                             msg_body: reply_parent_msg_body,
@@ -122,11 +113,17 @@ impl<'a> MetaData<'a> {
                             user_login: reply_parent_user_login,
                         },
                         room_id,
-                        subscriber,
                         tmi_sent_ts,
-                        turbo,
                         user_id,
                         user_type,
+                        user_info: UserInfo {
+                            display_name,
+                            subscriber,
+                            moderator,
+                            color,
+                            badges,
+                            turbo,
+                        },
                     },
                 )
             },
@@ -141,6 +138,16 @@ pub struct Reply<'a> {
     msg_id: Option<&'a str>,
     user_id: Option<u32>,
     user_login: Option<&'a str>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct UserInfo<'a> {
+    pub display_name: Option<&'a str>,
+    pub subscriber: bool,
+    pub moderator: bool,
+    pub color: Option<Option<(u8, u8, u8)>>,
+    pub badges: Vec<(Badges, &'a str)>,
+    pub turbo: bool,
 }
 
 type Res<T, U> = IResult<T, U, VerboseError<T>>;

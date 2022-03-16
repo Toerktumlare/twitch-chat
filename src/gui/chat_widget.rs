@@ -42,11 +42,12 @@ impl<'a> ChatWidget<'a> {
         self.window.print(screen, " | ", Style::none());
         let (r, g, b) = message
             .meta_data
+            .user_info
             .color
             .flatten()
             .unwrap_or_else(color_gen::get_color);
 
-        let display_name = message.meta_data.display_name.unwrap();
+        let display_name = message.meta_data.user_info.display_name.unwrap();
         let display_name = self.padder.add_pad(display_name);
 
         self.window.print(
