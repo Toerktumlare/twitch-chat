@@ -14,6 +14,26 @@ pub fn parse(args: &[String]) -> HashMap<&str, &str> {
         if let Some(value) = input.strip_prefix("--channel=") {
             parsed_args.insert("channel", value);
         }
+
+        if input == "--debug" {
+            parsed_args.insert("log_level", "debug");
+        }
+
+        if input == "--info" {
+            parsed_args.insert("log_level", "info");
+        }
+
+        if input == "--warn" {
+            parsed_args.insert("log_level", "warn");
+        }
+
+        if input == "--error" {
+            parsed_args.insert("log_level", "error");
+        }
+
+        if input == "--log" {
+            parsed_args.insert("logging", "true");
+        }
     });
 
     parsed_args

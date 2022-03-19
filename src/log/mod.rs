@@ -102,18 +102,14 @@ impl DerefMut for SingletonLogger {
 }
 
 pub fn get_logger() -> &'static SingletonLogger {
-    unsafe {
-        ONCE.call_once(|| {
-            let logger = SingletonLogger {
-                inner: Logger::new(),
-            };
-            LOGGER.write(logger);
-        });
-        LOGGER.assume_init_ref()
-    }
+    unsafe { LOGGER.assume_init_ref() }
 }
 
 pub fn get_logger_mut() -> &'static mut SingletonLogger {
+    unsafe { LOGGER.assume_init_mut() }
+}
+
+pub(crate) fn init() {
     unsafe {
         ONCE.call_once(|| {
             let logger = SingletonLogger {
@@ -121,6 +117,5 @@ pub fn get_logger_mut() -> &'static mut SingletonLogger {
             };
             LOGGER.write(logger);
         });
-        LOGGER.assume_init_mut()
     }
 }

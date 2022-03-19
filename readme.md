@@ -23,6 +23,17 @@ twitch-chat --nick=<nick> --channel=<channel>
 
 where `<nick>` is the nickname of your account the token is issued for and `<channel>` is the name of the streamers chat you want to connect to.
 
+### Enable logging
+per default the application does not log anything. If you wish to enable logging to maybe debug something add the `--log` flag and the application will log to a file in the same directory named `twitch_chat.log`. Default logging level is `info` but if you wish to change that, add one of the flags `--debug`, `--info`, `--warn`, `--error`, `--trace` during startup.
+
+> remember to enable logging, as the log level flag only sets the level.
+
+example: 
+```
+twitch-chat --nick=<nick> --channel=<channel> --log --debug
+
+```
+
 ## TODO:
 - ~~make `NICK` parameter an input argument~~
 - ~~breakout application from main method~~
@@ -33,7 +44,7 @@ where `<nick>` is the nickname of your account the token is issued for and `<cha
 - ~~Overhaul the logging, and add proper logging in the entire application.~~
 - ~~implement a "padder" struct/function that will fill out with whitespaces.~~
 - ~~implement `Drop` for `EventHandler`~~
-- add `--debug` flag so we can read debug messages in chat, including broken chat messages
+- ~~add `--debug` flag so we can read debug messages in chat, including broken chat messages~~
 - identify smileys and replace with unicode
 - add unicode stuff for moderators
 - add subscriber unicode char

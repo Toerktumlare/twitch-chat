@@ -12,14 +12,31 @@ mod twitch_chat;
 mod twitch_client;
 
 fn main() {
+    log::init();
+
+    let args: Vec<String> = env::args().collect();
+    let mut arg_map = arg_parser::parse(&args);
+
     let log = get_logger_mut();
-    log.set_level(LogLevel::Debug);
+    if let Some(value) = arg_map.remove("logging") {
+        if value.parse::<bool>().unwrap() {
+            log.enabled();
+        }
+    }
+
+    if let Some(&value) = arg_map.get("log_level") {
+        match value {
+            "debug" => log.set_level(LogLevel::Debug),
+            "info" => log.set_level(LogLevel::Info),
+            "warn" => log.set_level(LogLevel::Warn),
+            "error" => log.set_level(LogLevel::Error),
+            "trace" => log.set_level(LogLevel::Trace),
+            _ => (),
+        }
+    }
 
     log.debug(format!("logger values: {:#?}", log), "main");
     log.info("Starting application", "main");
-    let args: Vec<String> = env::args().collect();
-
-    let mut arg_map = arg_parser::parse(&args);
 
     let nick = arg_map.remove("nick").unwrap_or_else(|| {
         eprintln!("ERROR: no nick was provided");

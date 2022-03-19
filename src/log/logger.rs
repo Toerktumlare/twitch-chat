@@ -40,23 +40,16 @@ pub struct Logger {
     pub log_level: LogLevel,
     sender: Option<Sender<LogEvents>>,
     log_worker: Option<JoinHandle<()>>,
+    enabled: bool,
 }
 
 impl Logger {
     pub fn new() -> Self {
-        let (sender, receiver) = unbounded::<LogEvents>();
-
-        let mut appenders: Vec<Box<dyn Write + Send + Sync>> = Vec::new();
-        let appender = FileAppender::new("twitch_chat.log");
-        let file_appender = Box::new(appender);
-        appenders.push(file_appender);
-
-        let log_worker = LogWorker::run(receiver, appenders);
-
         Self {
             log_level: LogLevel::Info,
-            sender: Some(sender),
-            log_worker: Some(log_worker),
+            sender: None,
+            log_worker: None,
+            enabled: false,
         }
     }
 
@@ -90,6 +83,10 @@ impl Logger {
     }
 
     fn log(&self, log_level: LogLevel, message: String, type_name: impl Into<String>) {
+        if !self.enabled {
+            return;
+        }
+
         if log_level > self.log_level {
             return;
         }
@@ -110,5 +107,20 @@ impl Logger {
         log.debug("Closing down logger", type_name::<Logger>());
         drop(self.sender.take());
         self.log_worker.take().map(JoinHandle::join);
+    }
+
+    pub fn enabled(&mut self) {
+        let (sender, receiver) = unbounded::<LogEvents>();
+
+        let mut appenders: Vec<Box<dyn Write + Send + Sync>> = Vec::new();
+        let appender = FileAppender::new("twitch_chat.log");
+        let file_appender = Box::new(appender);
+        appenders.push(file_appender);
+
+        let log_worker = LogWorker::run(receiver, appenders);
+
+        self.log_worker = Some(log_worker);
+        self.sender = Some(sender);
+        self.enabled = true;
     }
 }
