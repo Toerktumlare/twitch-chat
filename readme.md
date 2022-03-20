@@ -57,3 +57,4 @@ twitch-chat --nick=<nick> --channel=<channel> --log --debug
 
 ### Parser bugs:
 - backslash should be allowed in the id field
+- comma needs to be allowed in "flags" header

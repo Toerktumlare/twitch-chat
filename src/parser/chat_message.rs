@@ -30,6 +30,8 @@ where
                 && char_item != '!'
                 && char_item != '@'
                 && char_item != '.'
+                && char_item != '.'
+                && char_item != '_'
                 && !char_item.is_alphanum()
         },
         ErrorKind::AlphaNumeric,
@@ -44,7 +46,7 @@ fn message_type(input: &str) -> Res<&str, MessageType> {
 fn destination(input: &str) -> Res<&str, &str> {
     context(
         "destination",
-        preceded(multispace0, preceded(tag("#"), alpha1)),
+        preceded(multispace0, preceded(tag("#"), prefix_chars)),
     )(input)
 }
 
@@ -88,6 +90,17 @@ mod test {
         assert_eq!(
             prefix(" :toerktumlare!toerktumlare@toerktumlare.tmi.twitch.tv"),
             Ok(("", "toerktumlare!toerktumlare@toerktumlare.tmi.twitch.tv"))
+        )
+    }
+
+    #[test]
+    fn test_prefix_with_underscore() {
+        assert_eq!(
+            prefix(" :toerktumlare_!toerktumlare_@toerktumlare_.tmi.twitch.tv"),
+            Ok((
+                "",
+                "toerktumlare_!toerktumlare_@toerktumlare_.tmi.twitch.tv"
+            ))
         )
     }
 }
