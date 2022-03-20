@@ -94,6 +94,7 @@ impl<'a> MetaData<'a> {
                     user_type,
                 ),
             )| {
+                let color = color.flatten();
                 (
                     next,
                     MetaData {
@@ -145,7 +146,7 @@ pub struct UserInfo<'a> {
     pub display_name: Option<&'a str>,
     pub subscriber: bool,
     pub moderator: bool,
-    pub color: Option<Option<(u8, u8, u8)>>,
+    pub color: Option<(u8, u8, u8)>,
     pub badges: Vec<(Badges, &'a str)>,
     pub turbo: bool,
 }
@@ -528,7 +529,7 @@ mod test {
                 display_name: Some("kirglow"),
                 subscriber: false,
                 moderator: false,
-                color: Some(Some((255, 255, 255))),
+                color: Some((255, 255, 255)),
                 badges: vec![],
                 turbo: false,
             },

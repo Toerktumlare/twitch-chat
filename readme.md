@@ -48,7 +48,7 @@ twitch-chat --nick=<nick> --channel=<channel> --log --debug
 - identify smileys and replace with unicode
 - add unicode stuff for moderators
 - add subscriber unicode char
-- some day solve consistent name color (twitch not sending default colors)
+- ~~generate colors for users that are missing and store them in a cache~~
 - someday look into using viuer
 - highlight first message in chat
 - highlight reply messages to chat owner

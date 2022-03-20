@@ -4,7 +4,8 @@ use chrono::Local;
 use crossterm::style::Color;
 
 use crate::{
-    color_gen, log::get_logger, parser::chat_message::ChatMessage, string_padder::StringPadder,
+    color_holder::ColorCache, log::get_logger, parser::chat_message::ChatMessage,
+    string_padder::StringPadder,
 };
 
 use super::{buffer::Style, screen::Screen, window::Window, Pos, Size};
@@ -14,6 +15,7 @@ pub struct ChatWidget<'a> {
     size: Size,
     pos: Pos,
     padder: StringPadder,
+    color_cache: ColorCache,
 }
 
 impl<'a> ChatWidget<'a> {
@@ -23,6 +25,7 @@ impl<'a> ChatWidget<'a> {
             pos,
             size,
             padder: StringPadder::new(),
+            color_cache: ColorCache::new(),
         }
     }
 
@@ -40,12 +43,15 @@ impl<'a> ChatWidget<'a> {
             Style::none(),
         );
         self.window.print(screen, " | ", Style::none());
-        let (r, g, b) = message
-            .meta_data
-            .user_info
-            .color
-            .flatten()
-            .unwrap_or_else(color_gen::get_color);
+        let (r, g, b) = message.meta_data.user_info.color.unwrap_or_else(|| {
+            let username = message.meta_data.user_info.display_name.unwrap();
+            log.debug(
+                format!("no color information found for user: {username}"),
+                type_name::<ColorCache>(),
+            );
+            self.color_cache
+                .get(message.meta_data.user_info.display_name.unwrap())
+        });
 
         let display_name = message.meta_data.user_info.display_name.unwrap();
         let display_name = self.padder.add_pad(display_name);
@@ -59,7 +65,6 @@ impl<'a> ChatWidget<'a> {
         let msg = message.message.replace("Kappa", "\u{1F608}");
         let msg = msg.replace(":)", "\u{1F600}");
 
-        log.debug(msg.trim(), type_name::<ChatWidget>());
         self.window.print(screen, msg.trim(), Style::none());
         self.window.newline(screen);
     }

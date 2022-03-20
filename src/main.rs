@@ -4,6 +4,7 @@ use twitch_chat::TwitchChat;
 
 mod arg_parser;
 mod color_gen;
+mod color_holder;
 mod gui;
 mod log;
 mod parser;
