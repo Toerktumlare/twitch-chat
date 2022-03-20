@@ -506,17 +506,13 @@ mod test {
         let meta_data_string = "@badge-info=;badges=;client-nonce=abc123;color=#FFFFFF;display-name=kirglow;emotes=;first-msg=0;flags=;id=2f-7e;mod=0;reply-parent-display-name=Toerktumlare;reply-parent-msg-body=take\\s2;reply-parent-msg-id=87-f3;reply-parent-user-id=4749;reply-parent-user-login=toerktumlare;room-id=4749;subscriber=0;tmi-sent-ts=1500000000;turbo=0;user-id=60;user-type=";
         let meta_data = MetaData {
             badge_info: vec![],
-            badges: vec![],
             client_nonce: Some("abc123"),
             bits: None,
-            color: Some(Some((255, 255, 255))),
-            display_name: Some("kirglow"),
             emote_only: None,
             emotes: vec![],
             first_msg: false,
             flags: Some(None),
             id: "2f-7e",
-            moderator: false,
             reply: Reply {
                 display_name: Some("Toerktumlare"),
                 msg_body: Some("take\\s2"),
@@ -525,11 +521,17 @@ mod test {
                 user_login: Some("toerktumlare"),
             },
             room_id: 4749,
-            subscriber: false,
             tmi_sent_ts: Utc.timestamp(1500000000, 0),
-            turbo: false,
             user_id: 60,
             user_type: Some(""),
+            user_info: UserInfo {
+                display_name: Some("kirglow"),
+                subscriber: false,
+                moderator: false,
+                color: Some(Some((255, 255, 255))),
+                badges: vec![],
+                turbo: false,
+            },
         };
 
         assert_eq!(MetaData::new(meta_data_string), Ok(("", meta_data)));
