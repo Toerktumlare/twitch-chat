@@ -45,24 +45,15 @@ twitch-chat --nick=<nick> --channel=<channel> --log --debug
 - ~~implement a "padder" struct/function that will fill out with whitespaces.~~
 - ~~implement `Drop` for `EventHandler`~~
 - ~~add `--debug` flag so we can read debug messages in chat, including broken chat messages~~
+- ~~add line wrapping of messages~~
+- ~~generate colors for users that are missing and store them in a cache~~
 - identify smileys and replace with unicode
 - add unicode stuff for moderators
 - add subscriber unicode char
-- ~~generate colors for users that are missing and store them in a cache~~
 - someday look into using viuer
 - highlight first message in chat
 - highlight reply messages to chat owner
 - remember to never implement log rotation
 
-### Parser todos:
-[x] move metadata to own file
-
-[ ] divide metadata up into several structs, user, badges etc.
-
-[/] write more specific char parsers for, username, uuid etc.
-
-[x] parse reply headers correctly
-
-[ ] look over optional headers, vs non-optional, and look over pub exposure
-
-[ ] add terminal highlighting whenever channel owner name is mentioned (prefixed by @)
+### Parser bugs:
+- backslash should be allowed in the id field

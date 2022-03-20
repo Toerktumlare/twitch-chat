@@ -11,6 +11,7 @@ rand = "0.8.0"
 tungstenite = "0.17.1"
 unicode-width = "0.1.9"
 url = "2.2.2"
+textwrap = "0.15.0"
 
 [dependencies.chrono]
 features = ["unstable-locales"]

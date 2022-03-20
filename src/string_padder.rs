@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 
 pub struct StringPadder {
-    current_max: u32,
+    pub current_max: u32,
 }
 
 impl StringPadder {

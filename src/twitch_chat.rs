@@ -65,20 +65,14 @@ impl TwitchChat {
                     if let Ok(chat_event) = chat_event {
                         if let Message::Text(message) = chat_event {
 
-                            match ChatMessage::parse(&message) {
-                                Ok(message) => chat.print(&mut screen, message),
-                                Err(message) => log.error(format!("{:#?}", message), type_name::<TwitchChat>()),
+                            if message.starts_with('@') {
+                                match ChatMessage::parse(&message) {
+                                    Ok(message) => chat.print(&mut screen, message),
+                                    Err(message) => log.error(format!("{:#?}", message), type_name::<TwitchChat>()),
+                                }
+                            } else {
+                                 log.info(&message, type_name::<TwitchChat>());
                             }
-
-                            // if let Ok(message) = ChatMessage::parse(&message) {
-                            //     chat.print(&mut screen, message);
-                            // } else if !message.starts_with('@') {
-                            //     log.error(message.trim(), type_name::<TwitchChat>());
-                            //     let _message = format!("| {} | {}", Local::now().format("%H:%M:%S"), message);
-                            //     // chat.print(&mut screen, message);
-                            // } else {
-                            //     log.debug(&message, type_name::<TwitchChat>());
-                            // }
                         }
                         screen.render().unwrap();
                     }
