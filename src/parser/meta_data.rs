@@ -23,6 +23,7 @@ pub struct MetaData<'a> {
     pub first_msg: bool,
     pub flags: Option<Option<&'a str>>,
     pub id: &'a str,
+    pub returning_chatter: bool,
     pub reply: Reply<'a>,
     pub room_id: u32,
     pub tmi_sent_ts: DateTime<Utc>,
@@ -48,6 +49,7 @@ impl<'a> MetaData<'a> {
                 opt(flags),
                 id,
                 moderator,
+                returning_chatter,
                 tuple((
                     opt(sep_pair(tags::REPLY_PARENT_DISPLAY_NAME, username)),
                     opt(sep_pair(tags::REPLY_PARENT_MSG_BODY, parse_msg_body)),
@@ -79,6 +81,7 @@ impl<'a> MetaData<'a> {
                     flags,
                     id,
                     moderator,
+                    returning_chatter,
                     (
                         reply_parent_display_name,
                         reply_parent_msg_body,
@@ -106,6 +109,7 @@ impl<'a> MetaData<'a> {
                         first_msg,
                         flags,
                         id,
+                        returning_chatter,
                         reply: Reply {
                             display_name: reply_parent_display_name,
                             msg_body: reply_parent_msg_body,
@@ -359,6 +363,10 @@ fn moderator(input: &str) -> Res<&str, bool> {
     sep_pair_to_bool(tags::MODERATOR, digit1).parse(input)
 }
 
+fn returning_chatter(input: &str) -> Res<&str, bool> {
+    sep_pair_to_bool(tags::RETURNING_CHATTER, digit1).parse(input)
+}
+
 fn subscriber(input: &str) -> Res<&str, bool> {
     sep_pair_to_bool(tags::SUBSCRIBER, digit1).parse(input)
 }
@@ -463,6 +471,7 @@ mod test {
     // flags=;
     // id=d238119b-ebe3-41a7-b177-55d145402d0b;
     // mod=0;
+    // returning_chatter=0;
     // reply-parent-display-name=Toerktumlare;
     // reply-parent-msg-body=hello\schat!;
     // reply-parent-msg-id=9bf7210b-e249-4d32-a240-fc0a6bb762a8;
@@ -504,7 +513,7 @@ mod test {
 
     #[test]
     fn parse_reply_message_meta_data() {
-        let meta_data_string = "@badge-info=;badges=;client-nonce=abc123;color=#FFFFFF;display-name=kirglow;emotes=;first-msg=0;flags=;id=2f-7e;mod=0;reply-parent-display-name=Toerktumlare;reply-parent-msg-body=take\\s2;reply-parent-msg-id=87-f3;reply-parent-user-id=4749;reply-parent-user-login=toerktumlare;room-id=4749;subscriber=0;tmi-sent-ts=1500000000;turbo=0;user-id=60;user-type=";
+        let meta_data_string = "@badge-info=;badges=;client-nonce=abc123;color=#FFFFFF;display-name=kirglow;emotes=;first-msg=0;flags=;id=2f-7e;mod=0;returning_chatter=0;reply-parent-display-name=Toerktumlare;reply-parent-msg-body=take\\s2;reply-parent-msg-id=87-f3;reply-parent-user-id=4749;reply-parent-user-login=toerktumlare;room-id=4749;subscriber=0;tmi-sent-ts=1500000000;turbo=0;user-id=60;user-type=";
         let meta_data = MetaData {
             badge_info: vec![],
             client_nonce: Some("abc123"),
@@ -514,6 +523,7 @@ mod test {
             first_msg: false,
             flags: Some(None),
             id: "2f-7e",
+            returning_chatter: false,
             reply: Reply {
                 display_name: Some("Toerktumlare"),
                 msg_body: Some("take\\s2"),

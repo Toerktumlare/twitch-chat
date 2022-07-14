@@ -16,6 +16,7 @@ pub const FIRST_MSG: &str = "first-msg";
 pub const TURBO: &str = "turbo";
 pub const SUBSCRIBER: &str = "subscriber";
 pub const MODERATOR: &str = "mod";
+pub const RETURNING_CHATTER: &str = "returning-chatter";
 pub const FLAGS: &str = "flags";
 pub const USER_TYPE: &str = "user-type";
 pub const CLIENT_NONCE: &str = "client-nonce";
