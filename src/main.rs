@@ -85,4 +85,8 @@ fn print_help() {
     println!("\t\t nick of the account the provided token is associated with.");
     println!("\t --channel");
     println!("\t\t name of the channel you want to connect to");
+    println!("\t --log");
+    println!("\t\t enable logging to file");
+    println!("\t --<log_level>");
+    println!("\t\t available levels, debug, info, warn, error trace, default is info");
 }
