@@ -53,8 +53,6 @@ impl TwitchClient {
             type_name::<TwitchClient>(),
         );
 
-        log.debug(format!("token: {}", &token), type_name::<TwitchClient>());
-
         let (mut socket, response) = connect(&url)?;
 
         if let MaybeTlsStream::Plain(socket) = socket.get_mut() {
