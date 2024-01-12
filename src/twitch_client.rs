@@ -53,6 +53,8 @@ impl TwitchClient {
             type_name::<TwitchClient>(),
         );
 
+        log.debug(format!("token: {}", &token), type_name::<TwitchClient>());
+
         let (mut socket, response) = connect(&url)?;
 
         if let MaybeTlsStream::Plain(socket) = socket.get_mut() {
@@ -75,7 +77,7 @@ impl TwitchClient {
             );
         }
 
-        let token = format!("PASS {}", &token);
+        let token = format!("PASS oauth:{}", &token);
         let nick_message = format!("NICK {}", &nick);
         let join_message = format!("JOIN #{}", &channel);
         let tag_message = "CAP REQ :twitch.tv/tags";
@@ -162,7 +164,10 @@ impl Worker {
                             log.debug("Connection closed", type_name::<Worker>());
                             break;
                         }
-                        _ => log.error("something very unexpected happened", type_name::<Worker>()),
+                        _ => log.error(
+                            format!("something very unexpected happened: {}", err),
+                            type_name::<Worker>(),
+                        ),
                     },
                 }
                 if let Ok(Message::Terminate) = receiver.try_recv() {
